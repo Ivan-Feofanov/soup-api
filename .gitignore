@@ -1,0 +1,8 @@
+.idea
+.venv
+uv.lock
+uv.pex
+uv.resolver_cache.txt
+uv.installer_cache
+
+.env
