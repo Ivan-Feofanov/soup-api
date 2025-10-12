@@ -10,9 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
+from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+import dotenv
+from corsheaders.defaults import default_headers
+
+dotenv.load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,18 +34,25 @@ SECRET_KEY = "django-insecure-_lukv4)vy!^mypcaf&&vpn+@k8dhkh_0@pt8om!u-h32^20tyc
 DEBUG = True
 
 # CORS
-
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
 ]
-
+CORS_ALLOW_HEADERS = (
+    *default_headers,
+    "x-session-token",
+    "x-email-verification-key",
+    "x-password-reset-key",
+)
 CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_WHITELIST = [
+CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://localhost:5173",
 ]
-
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:8000",
+]
 
 # Application definition
 
@@ -52,6 +65,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Authentication
+    "social_django",
+    # Apps
+    "ninja_extra",
     "users.apps.UsersConfig",
     "kitchen.apps.KitchenConfig",
 ]
@@ -98,6 +115,40 @@ DATABASES = {
 
 # Auth user model
 AUTH_USER_MODEL = "users.CustomUser"
+
+AUTHENTICATION_BACKENDS = [
+    "users.auth_backend.CustomGoogleOAuth2",  # Custom backend for Google OAuth2",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get("GOOGLE_CLIENT_ID")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+]
+SOCIAL_AUTH_STRATEGY = "social_django.strategy.DjangoStrategy"
+SOCIAL_AUTH_STORAGE = "social_django.models.DjangoStorage"
+SOCIAL_AUTH_PIPELINE = (
+    "social_core.pipeline.social_auth.social_details",
+    "social_core.pipeline.social_auth.social_uid",
+    "social_core.pipeline.social_auth.auth_allowed",
+    "social_core.pipeline.social_auth.social_user",
+    "social_core.pipeline.user.get_username",
+    "social_core.pipeline.user.create_user",
+    "social_core.pipeline.social_auth.associate_user",
+    "social_core.pipeline.social_auth.load_extra_data",
+    "social_core.pipeline.user.user_details",
+)
+
+# Настройки для JWT токенов
+NINJA_JWT = {
+    "USER_ID_FIELD": "uid",
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": True,
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
