@@ -1,31 +1,10 @@
-from django.contrib.auth import get_user_model
-from ninja import Router, ModelSchema
+from ninja import Router
 from django.http import HttpRequest, QueryDict
-from ninja_jwt.authentication import JWTAuth
-from pydantic import BaseModel
 from social_django.utils import load_strategy, load_backend
 
 from ninja_jwt.tokens import RefreshToken
 
-UserModel = get_user_model()
-
-
-class SocialAuthSchema(BaseModel):
-    code: str
-    redirect_uri: str
-
-
-class UserSchema(ModelSchema):
-    class Meta:
-        model = UserModel
-        fields = ["uid", "email", "first_name", "last_name"]
-
-
-class AuthResponseSchema(BaseModel):
-    access: str
-    refresh: str
-    user: UserSchema
-
+from users.api.schemes import SocialAuthSchema, UserSchema, AuthResponseSchema
 
 router = Router()
 
@@ -57,8 +36,3 @@ def social_login(request: HttpRequest, backend: str, data: SocialAuthSchema):
     except Exception as e:
         print(f"Error during social login: {e}")
         return 400, {"error": "Invalid code or authentication error."}
-
-
-@router.get("/me/", response=UserSchema, auth=JWTAuth())
-def me(request):
-    return request.user
