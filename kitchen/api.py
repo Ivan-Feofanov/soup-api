@@ -1,11 +1,11 @@
 import uuid
 
-from ninja import Schema, ModelSchema, Router
+from django.shortcuts import get_object_or_404
+from ninja import Schema, ModelSchema
+from ninja_extra import api_controller, ControllerBase, http_get
 
 from kitchen.models import Recipe
 from users.models import CustomUser
-
-router = Router()
 
 
 class IngredientSchema(Schema):
@@ -19,7 +19,7 @@ class IngredientSchema(Schema):
 class AuthorSchema(ModelSchema):
     class Meta:
         model = CustomUser
-        fields = ["uid", "email", "first_name", "last_name"]
+        fields = ["uid", "email", "username", "handler"]
 
 
 class RecipeSchema(ModelSchema):
@@ -49,9 +49,15 @@ class RecipeSchema(ModelSchema):
         return result
 
 
-@router.get("/recipes/", response=list[RecipeSchema])
-def list_recipes(request):
-    return Recipe.objects.select_related("author").prefetch_related(
-        "recipeingredient_set__ingredient",
-        "recipeingredient_set__unit",
-    )
+@api_controller("/kitchen", tags=["recipes"])
+class KitchenController(ControllerBase):
+    @http_get("/recipes/", response=list[RecipeSchema])
+    def list_recipes(self, request):
+        return Recipe.objects.select_related("author").prefetch_related(
+            "recipeingredient_set__ingredient",
+            "recipeingredient_set__unit",
+        )
+
+    @http_get("/recipes/{uuid:uid}", response=RecipeSchema)
+    def get_recipe(self, request, uid: uuid.UUID):
+        return get_object_or_404(Recipe, uid=uid)

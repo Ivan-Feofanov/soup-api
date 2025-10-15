@@ -4,6 +4,7 @@ from django.db import models
 
 from shared.models import Common
 
+
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
@@ -31,12 +32,20 @@ class UserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
+
 class CustomUser(Common, AbstractUser):
-    USERNAME_FIELD = 'email'
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["handler"], name="unique_handler", nulls_distinct=True
+            )
+        ]
+
+    USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
-    first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255)
+    username = models.CharField(max_length=255, null=True, blank=True)
+    handler = models.CharField(max_length=255, null=True, blank=True)
     email = models.EmailField(unique=True)
     avatar = models.URLField(null=True, blank=True)
 
