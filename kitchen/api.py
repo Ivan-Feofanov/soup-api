@@ -69,7 +69,7 @@ class RecipeSchema(ModelSchema):
 
 
 class RecipeCreateSchema(Schema):
-    name: str
+    title: str
     description: str
     image: str | None = None
     notes: str | None = None
@@ -110,7 +110,7 @@ class KitchenController(ControllerBase):
         with atomic():
             recipe = Recipe.objects.create(
                 author=request.user,
-                name=payload.name,
+                name=payload.title,
                 description=payload.description,
                 notes=payload.notes,
                 instructions=payload.instructions,
