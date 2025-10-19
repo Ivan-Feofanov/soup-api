@@ -8,7 +8,7 @@ from ninja_extra import (
     http_patch,
     status,
 )
-from ninja_extra.exceptions import APIException
+from ninja_extra.exceptions import APIException, PermissionDenied
 from ninja_extra.permissions import IsAuthenticated
 from ninja_jwt.authentication import JWTAuth
 
@@ -30,7 +30,7 @@ class UserModelController(ControllerBase):
     def update(self, request, uid: uuid.UUID, payload: UserUpdateSchema):
         user = request.user
         if user.uid != uid:
-            return 403, {"error": "Forbidden"}
+            raise PermissionDenied()
         for field, value in payload.model_dump().items():
             if value is not None:
                 setattr(user, field, value)

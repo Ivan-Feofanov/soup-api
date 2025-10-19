@@ -4,14 +4,11 @@ from django.db.transaction import atomic
 from django.shortcuts import get_object_or_404
 from ninja import Schema, ModelSchema
 from ninja_extra import api_controller, ControllerBase, http_get, http_post, http_patch
+from ninja_extra.exceptions import PermissionDenied
 from ninja_jwt.authentication import JWTAuth
 
 from kitchen.models import Recipe, Ingredient, Unit, RecipeIngredient
 from users.models import CustomUser
-
-
-class ErrorSchema(Schema):
-    error: str
 
 
 class IngredientSchema(ModelSchema):
@@ -125,13 +122,13 @@ class KitchenController(ControllerBase):
 
     @http_patch(
         "/recipes/{uuid:uid}",
-        response={200: RecipeSchema, 403: ErrorSchema},
+        response=RecipeSchema,
         auth=JWTAuth(),
     )
     def update_recipe(self, request, uid: uuid.UUID, payload: RecipeCreateSchema):
         recipe = get_object_or_404(Recipe, uid=uid)
         if recipe.author != request.user:
-            return 403, {"error": "Forbidden"}
+            raise PermissionDenied()
         recipe_payload = payload.model_dump()
         _ = recipe_payload.pop("ingredients")
         if payload.ingredients:
