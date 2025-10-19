@@ -4,6 +4,7 @@ from django.db import models
 
 from shared.models import Common
 
+
 class Unit(Common):
     name = models.CharField(max_length=255, db_index=True)
     abbreviation = models.CharField(max_length=255, null=True, blank=True)
@@ -21,7 +22,7 @@ class Ingredient(Common):
 
 
 class Recipe(Common):
-    name = models.CharField(max_length=255, db_index=True)
+    title = models.CharField(max_length=255, db_index=True)
     description = models.TextField(null=True, blank=True)
     image = models.URLField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
@@ -31,7 +32,7 @@ class Recipe(Common):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     def __str__(self):
-        return self.name
+        return self.title
 
 
 class RecipeIngredient(Common):

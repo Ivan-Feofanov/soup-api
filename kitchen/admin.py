@@ -30,6 +30,6 @@ class RecipeIngredientInline(admin.TabularInline):
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
     form = RecipeForm
-    fields = ["name", "description", "image", "notes", "instructions", "author"]
+    fields = ["title", "description", "image", "notes", "instructions", "author"]
     readonly_fields = ["uid"]
     inlines = [RecipeIngredientInline]
