@@ -1,47 +1,4 @@
 import pytest
-from django.test import Client
-from ninja_jwt.tokens import RefreshToken
-
-from users.models import CustomUser
-
-
-@pytest.fixture
-def client():
-    return Client()
-
-
-@pytest.fixture
-def password():
-    return "pass1234!"
-
-
-@pytest.fixture
-def user(password):
-    return CustomUser.objects.create_user(
-        email="user@example.com",
-        password=password,
-        username="john",
-        handler="johnny",
-    )
-
-
-@pytest.fixture
-def other_user(password):
-    return CustomUser.objects.create_user(
-        email="other@example.com",
-        password=password,
-        username="other",
-        handler="other",
-    )
-
-
-@pytest.fixture
-def get_token():
-    def _get(user: CustomUser) -> str:
-        refresh = RefreshToken.for_user(user)
-        return str(refresh.access_token)
-
-    return _get
 
 
 @pytest.mark.django_db
@@ -60,10 +17,10 @@ def test_me_requires_auth(client):
 def test_me_returns_current_user(client, user, get_token):
     # Arrange
     url = "/api/users/me"
-    token = get_token(user)
+    auth_token = get_token(user)
 
     # Act
-    resp = client.get(url, HTTP_AUTHORIZATION=f"Bearer {token}")
+    resp = client.get(url, HTTP_AUTHORIZATION=f"Bearer {auth_token}")
 
     # Assert
     assert resp.status_code == 200

@@ -1,104 +1,18 @@
 import pytest
-from django.test import Client
-from ninja_jwt.tokens import RefreshToken
+from ninja_extra import status
 
-from users.models import CustomUser
-from kitchen.models import Ingredient, Unit, Recipe, RecipeIngredient
-
-
-@pytest.fixture
-def client():
-    return Client()
-
-
-@pytest.fixture
-def password():
-    return "pass1234!"
-
-
-@pytest.fixture
-def user(password):
-    return CustomUser.objects.create_user(
-        email="chef@example.com",
-        password=password,
-        username="chef",
-        handler="chef-handler",
-    )
-
-
-@pytest.fixture
-def other_user(password):
-    return CustomUser.objects.create_user(
-        email="intruder@example.com", password=password
-    )
-
-
-@pytest.fixture
-def token(get_token, user):
-    return get_token(user)
-
-
-@pytest.fixture
-def get_token(client):
-    def _get_token(user: CustomUser) -> str:
-        refresh = RefreshToken.for_user(user)
-        return str(refresh.access_token)
-
-    return _get_token
-
-
-@pytest.fixture
-def unit_g():
-    return Unit.objects.create(name="Gram", abbreviation="g")
-
-
-@pytest.fixture
-def unit_ml():
-    return Unit.objects.create(name="Milliliter", abbreviation="ml")
-
-
-@pytest.fixture
-def ing_flour():
-    return Ingredient.objects.create(name="Flour")
-
-
-@pytest.fixture
-def ing_water():
-    return Ingredient.objects.create(name="Water")
-
-
-@pytest.fixture
-def recipe(user, ing_flour, ing_water, unit_g, unit_ml):
-    recipe = Recipe.objects.create(
-        author=user,
-        title="Bread",
-        description="Simple bread",
-        instructions=["Mix", "Bake"],
-    )
-    RecipeIngredient.objects.create(
-        recipe=recipe,
-        ingredient=ing_flour,
-        unit=unit_g,
-        quantity=500,
-    )
-    RecipeIngredient.objects.create(
-        recipe=recipe,
-        ingredient=ing_water,
-        unit=unit_ml,
-        quantity=300,
-    )
-    return recipe
+from kitchen.models import Ingredient, Unit, Recipe
 
 
 @pytest.mark.django_db
 def test_list_recipes(client, recipe, user):
     resp = client.get("/api/kitchen/recipes/")
+    assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
     first = data[0]
     ing_names = sorted(i["ingredient"]["name"] for i in first["ingredients"])
     units = sorted(i["unit"]["abbreviation"] for i in first["ingredients"])
 
-    assert resp.status_code == 200
     assert isinstance(data, list)
     assert len(data) >= 1
     assert first["title"] == "Bread"
@@ -114,9 +28,9 @@ def test_list_recipes(client, recipe, user):
 @pytest.mark.django_db
 def test_get_recipe(client, recipe, user, ing_flour, ing_water, unit_g, unit_ml):
     resp = client.get(f"/api/kitchen/recipes/{recipe.uid}")
+    assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
 
-    assert resp.status_code == 200
     assert data["uid"] == str(recipe.uid)
     assert data["title"] == "Bread"
     assert data["description"] == "Simple bread"
@@ -143,70 +57,6 @@ def test_get_recipe(client, recipe, user, ing_flour, ing_water, unit_g, unit_ml)
 
 
 @pytest.mark.django_db
-def test_list_ingredients(client, ing_flour, ing_water):
-    resp = client.get("/api/kitchen/ingredients/")
-    data = resp.json()
-    names = sorted(d["name"] for d in data)
-
-    assert resp.status_code == 200
-    assert {"Flour", "Water"}.issubset(set(names))
-
-
-@pytest.mark.django_db
-def test_list_units(client, unit_g, unit_ml):
-    resp = client.get("/api/kitchen/units/")
-    data = resp.json()
-    abbrevs = [d["abbreviation"] for d in data]
-
-    assert resp.status_code == 200
-    assert "g" in abbrevs
-    assert "ml" in abbrevs
-
-
-@pytest.mark.django_db
-def test_create_ingredient(client, token):
-    url = "/api/kitchen/ingredients/"
-    payload = {"name": "Sugar"}
-
-    resp = client.post(
-        url,
-        data=payload,
-        content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
-    )
-    data = resp.json()
-
-    assert resp.status_code == 200
-    assert data["name"] == "Sugar"
-    assert Ingredient.objects.filter(name="Sugar").exists()
-
-
-@pytest.mark.django_db
-def test_create_ingredient_idempotent_by_name(client, token):
-    url = "/api/kitchen/ingredients/"
-    payload = {"name": "Sugar"}
-    r1 = client.post(
-        url,
-        data=payload,
-        content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
-    )
-    first_uid = r1.json()["uid"]
-
-    # Posting same name should return existing ingredient (same uid)
-    r2 = client.post(
-        url,
-        data=payload,
-        content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
-    )
-
-    assert r2.status_code == 200
-    assert r2.json()["uid"] == first_uid
-    assert Ingredient.objects.filter(name="Sugar").count() == 1
-
-
-@pytest.mark.django_db
 def test_create_recipe_non_auth(client, ing_flour):
     url = "/api/kitchen/recipes/"
     payload = {
@@ -224,7 +74,7 @@ def test_create_recipe_non_auth(client, ing_flour):
 
     r = client.post(url, data=payload, content_type="application/json")
 
-    assert r.status_code == 401
+    assert r.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.django_db
@@ -251,10 +101,10 @@ def test_create_recipe(client, token, ing_flour, unit_g, user):
         content_type="application/json",
         HTTP_AUTHORIZATION=f"Bearer {token}",
     )
+    assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     new_recipe = Recipe.objects.get(title="Pancakes")
 
-    assert response.status_code == 200, response.content
     assert data["title"] == "Pancakes"
     assert len(data["ingredients"]) == 1
     # DB side checks
@@ -295,9 +145,9 @@ def test_update_recipe(client, token, recipe):
         content_type="application/json",
         HTTP_AUTHORIZATION=f"Bearer {token}",
     )
+    assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
 
-    assert resp.status_code == 200
     assert data["title"] == new_title
     assert data["description"] == new_description
     assert data["notes"] == new_notes
@@ -320,16 +170,16 @@ def test_update_recipe_forbidden_for_non_author(client, get_token, other_user, r
         "instructions": ["Do"],
         "ingredients": [],  # keep empty to avoid ingredient changes
     }
-    token = get_token(other_user)
+    auth_token = get_token(other_user)
 
     resp = client.patch(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
+        HTTP_AUTHORIZATION=f"Bearer {auth_token}",
     )
 
-    assert resp.status_code == 403
+    assert resp.status_code == status.HTTP_403_FORBIDDEN
     assert (
         resp.json().get("detail")
         == "You do not have permission to perform this action."

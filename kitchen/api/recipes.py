@@ -3,29 +3,21 @@ import uuid
 from django.db.transaction import atomic
 from django.shortcuts import get_object_or_404
 from ninja import Schema, ModelSchema
-from ninja_extra import api_controller, ControllerBase, http_get, http_post, http_patch
+from ninja_extra import (
+    api_controller,
+    ControllerBase,
+    http_get,
+    http_post,
+    http_patch,
+    status,
+)
 from ninja_extra.exceptions import PermissionDenied
 from ninja_jwt.authentication import JWTAuth
 
-from kitchen.models import Recipe, Ingredient, Unit, RecipeIngredient
+from kitchen.api.ingredients import IngredientSchema
+from kitchen.api.units import UnitSchema
+from kitchen.models import Recipe, RecipeIngredient
 from users.models import CustomUser
-
-
-class IngredientSchema(ModelSchema):
-    class Meta:
-        model = Ingredient
-        fields = ["uid", "name"]
-
-
-class UnitSchema(ModelSchema):
-    class Meta:
-        model = Unit
-        fields = ["uid", "abbreviation", "name"]
-
-
-class IngredientCreateSchema(Schema):
-    name: str
-    image: str | None = None
 
 
 class IngredientInRecipeCreateSchema(Schema):
@@ -72,35 +64,27 @@ class RecipeCreateSchema(Schema):
     ingredients: list[IngredientInRecipeCreateSchema]
 
 
-@api_controller("/kitchen", tags=["recipes"])
-class KitchenController(ControllerBase):
-    @http_get("/recipes/", response=list[RecipeSchema])
+@api_controller("/kitchen/recipes", tags=["Recipes"])
+class RecipesController(ControllerBase):
+    @http_get("/", response=list[RecipeSchema])
     def list_recipes(self, request):
         return Recipe.objects.select_related("author").prefetch_related(
             "recipeingredient_set__ingredient",
             "recipeingredient_set__unit",
         )
 
-    @http_get("/recipes/{uuid:uid}", response=RecipeSchema)
+    @http_get("/{uuid:uid}", response=RecipeSchema)
     def get_recipe(self, request, uid: uuid.UUID):
         return get_object_or_404(Recipe, uid=uid)
 
-    @http_get("/ingredients/", response=list[IngredientSchema])
-    def list_ingredients(self, request):
-        return Ingredient.objects.all()
-
-    @http_get("/units/", response=list[UnitSchema])
-    def list_units(self, request):
-        return Unit.objects.all()
-
-    @http_post("/ingredients/", response=IngredientSchema, auth=JWTAuth())
-    def create_ingredient(self, request, payload: IngredientCreateSchema):
-        existing_ingredient = Ingredient.objects.filter(name=payload.name).first()
-        if existing_ingredient:
-            return existing_ingredient
-        return Ingredient.objects.create(**payload.model_dump())
-
-    @http_post("/recipes/", response=RecipeSchema, auth=JWTAuth())
+    @http_post(
+        "/",
+        response={
+            status.HTTP_201_CREATED: RecipeSchema,
+            status.HTTP_400_BAD_REQUEST: dict,
+        },
+        auth=JWTAuth(),
+    )
     def create_recipe(self, request, payload: RecipeCreateSchema):
         with atomic():
             recipe = Recipe.objects.create(
@@ -118,10 +102,10 @@ class KitchenController(ControllerBase):
                     quantity=ingredient.quantity,
                 )
             recipe.refresh_from_db()
-            return recipe
+            return status.HTTP_201_CREATED, recipe
 
     @http_patch(
-        "/recipes/{uuid:uid}",
+        "/{uuid:uid}",
         response=RecipeSchema,
         auth=JWTAuth(),
     )

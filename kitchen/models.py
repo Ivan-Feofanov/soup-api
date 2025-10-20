@@ -6,8 +6,8 @@ from shared.models import Common
 
 
 class Unit(Common):
-    name = models.CharField(max_length=255, db_index=True)
-    abbreviation = models.CharField(max_length=255, null=True, blank=True)
+    name = models.CharField(max_length=255, db_index=True, unique=True)
+    abbreviation = models.CharField(max_length=255, db_index=True, unique=True)
 
     def __str__(self):
         return self.name
