@@ -184,3 +184,29 @@ def test_update_recipe_forbidden_for_non_author(client, get_token, other_user, r
         resp.json().get("detail")
         == "You do not have permission to perform this action."
     )
+
+
+@pytest.mark.django_db
+def test_delete_recipe(client, token, recipe):
+    url = f"/api/kitchen/recipes/{recipe.uid}"
+    resp = client.delete(
+        url,
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {token}",
+    )
+
+    assert resp.status_code == status.HTTP_204_NO_CONTENT
+    assert not Recipe.objects.filter(uid=recipe.uid).exists()
+
+
+@pytest.mark.django_db
+def test_delete_recipe_forbidden_for_non_author(client, get_token, other_user, recipe):
+    url = f"/api/kitchen/recipes/{recipe.uid}"
+    auth_token = get_token(other_user)
+
+    resp = client.delete(
+        url,
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {auth_token}",
+    )
+    assert resp.status_code == status.HTTP_403_FORBIDDEN

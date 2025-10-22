@@ -10,6 +10,7 @@ from ninja_extra import (
     http_post,
     http_patch,
     status,
+    http_delete,
 )
 from ninja_extra.exceptions import PermissionDenied
 from ninja_jwt.authentication import JWTAuth
@@ -130,3 +131,13 @@ class RecipesController(ControllerBase):
         recipe.save()
         recipe.refresh_from_db()
         return recipe
+
+    @http_delete(
+        path="/{uuid:uid}", response={status.HTTP_204_NO_CONTENT: None}, auth=JWTAuth()
+    )
+    def delete_recipe(self, request, uid: uuid.UUID):
+        recipe = get_object_or_404(Recipe, uid=uid)
+        if recipe.author != request.user:
+            raise PermissionDenied()
+        recipe.delete()
+        return status.HTTP_204_NO_CONTENT, None
