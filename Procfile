@@ -1,2 +1,3 @@
-release: _scripts/release.sh
-web: _scripts/run.sh
+web: gunicorn core.wsgi:application
+
+release: python manage.py migrate --noinput
