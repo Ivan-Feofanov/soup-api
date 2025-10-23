@@ -47,6 +47,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = ["http://localhost:5173", "https://soup.feofanov.dev"]
 CSRF_TRUSTED_ORIGINS = [
     "https://soup.feofanov.dev",
+    "https://soup-api.feofanov.dev",
     "http://localhost:5173",
     "http://localhost:8000",
 ]
