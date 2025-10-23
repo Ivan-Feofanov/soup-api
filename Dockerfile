@@ -27,9 +27,9 @@ RUN groupadd -r app && useradd -r -g app app
 
 # Set the working directory
 WORKDIR /app
+RUN chown -R app:app /app
 
 COPY --from=builder --chown=app:app /app /app
-RUN chown -R app:app /app
 
 # Switch to the non-root user
 USER app
