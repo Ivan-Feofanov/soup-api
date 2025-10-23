@@ -5,7 +5,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # Change the working directory to the `app` directory
 WORKDIR /app
 
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 
 # Install uv and dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -18,6 +18,7 @@ COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
+RUN python manage.py collectstatic --noinput
 
 # The runtime image, used to just run the code provided its virtual environment
 FROM python:3.13-slim AS runtime
