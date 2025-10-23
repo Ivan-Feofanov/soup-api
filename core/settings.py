@@ -28,15 +28,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-_lukv4)vy!^mypcaf&&vpn+@k8dhkh_0@pt8om!u-h32^20tyc"
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY", "django-insecure-_lukv4)vy!^mypcaf&&vpn+@k8dhkh_0@pt8om!u-h32^20tyc"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 # CORS
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
+    "soup.feofanov.dev",
 ]
 CORS_ALLOW_HEADERS = (
     *default_headers,
@@ -45,11 +48,9 @@ CORS_ALLOW_HEADERS = (
     "x-password-reset-key",
 )
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000",
-    "http://localhost:5173",
-]
+CORS_ALLOWED_ORIGINS = ["http://localhost:5173", "https://soup.feofanov.dev"]
 CSRF_TRUSTED_ORIGINS = [
+    "https://soup.feofanov.dev",
     "http://localhost:5173",
     "http://localhost:8000",
 ]
@@ -185,6 +186,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
 # Default primary key field type
