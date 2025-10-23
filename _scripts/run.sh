@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
 
 # Run server
-gunicorn core.wsgi:application
+exec gosu app gunicorn core.wsgi:application
 

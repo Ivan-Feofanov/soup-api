@@ -22,6 +22,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # The runtime image, used to just run the code provided its virtual environment
 FROM python:3.13-slim AS runtime
 
+# Add gosu to run web server with non app user
+RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN groupadd -r app && useradd -r -g app app
 
@@ -30,9 +33,6 @@ WORKDIR /app
 
 RUN chown -R app:app /app
 COPY --from=builder --chown=app:app /app /app
-
-# Switch to the non-root user
-USER app
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
