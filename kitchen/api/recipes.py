@@ -17,8 +17,20 @@ from ninja_jwt.authentication import JWTAuth
 
 from kitchen.api.ingredients import IngredientSchema
 from kitchen.api.units import UnitSchema
-from kitchen.models import Recipe, RecipeIngredient
+from kitchen.models import Recipe, RecipeIngredient, Instruction
 from users.models import CustomUser
+
+
+class InstructionSchema(ModelSchema):
+    class Meta:
+        model = Instruction
+        fields = ["uid", "step", "description", "timer"]
+
+
+class InstructionCreateSchema(ModelSchema):
+    class Meta:
+        model = Instruction
+        fields = ["step", "description", "timer"]
 
 
 class IngredientInRecipeCreateSchema(Schema):
@@ -49,6 +61,7 @@ class RecipeSchema(ModelSchema):
         fields = "__all__"
 
     ingredients: list[IngredientInRecipeSchema] = []
+    instructions: list[InstructionSchema] = []
     author: AuthorSchema | None = None
 
     @staticmethod
@@ -61,7 +74,7 @@ class RecipeCreateSchema(Schema):
     description: str
     image: str | None = None
     notes: str | None = None
-    instructions: list[str]
+    instructions: list[InstructionCreateSchema]
     ingredients: list[IngredientInRecipeCreateSchema]
 
 
@@ -93,7 +106,6 @@ class RecipesController(ControllerBase):
                 title=payload.title,
                 description=payload.description,
                 notes=payload.notes,
-                instructions=payload.instructions,
             )
             for ingredient in payload.ingredients:
                 RecipeIngredient.objects.create(
@@ -115,16 +127,36 @@ class RecipesController(ControllerBase):
         if recipe.author != request.user:
             raise PermissionDenied()
         recipe_payload = payload.model_dump()
-        _ = recipe_payload.pop("ingredients")
+        del recipe_payload["ingredients"]
+        del recipe_payload["instructions"]
+        if payload.instructions:
+            instructions_for_create = []
+            recipe.instructions.all().delete()
+            for instruction in payload.instructions:
+                instructions_for_create.append(
+                    Instruction(
+                        recipe=recipe,
+                        step=instruction.step,
+                        description=instruction.description,
+                        timer=instruction.timer,
+                    )
+                )
+            Instruction.objects.bulk_create(instructions_for_create)
+
         if payload.ingredients:
             recipe.recipeingredient_set.all().delete()
+            ingredients_for_create = []
             for ingredient in payload.ingredients:
-                RecipeIngredient.objects.create(
-                    recipe=recipe,
-                    ingredient_id=ingredient.ingredient_uid,
-                    unit_id=ingredient.unit_uid,
-                    quantity=ingredient.quantity,
+                ingredients_for_create.append(
+                    RecipeIngredient(
+                        recipe=recipe,
+                        ingredient_id=ingredient.ingredient_uid,
+                        unit_id=ingredient.unit_uid,
+                        quantity=ingredient.quantity,
+                    )
                 )
+            RecipeIngredient.objects.bulk_create(ingredients_for_create)
+
         for field, value in recipe_payload.items():
             if value is not None:
                 setattr(recipe, field, value)

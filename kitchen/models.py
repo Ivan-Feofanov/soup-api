@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 from shared.models import Common
@@ -11,6 +10,18 @@ class Unit(Common):
 
     def __str__(self):
         return self.name
+
+
+class Instruction(Common):
+    step = models.IntegerField()
+    description = models.TextField()
+    recipe = models.ForeignKey(
+        "Recipe", on_delete=models.CASCADE, related_name="instructions"
+    )
+    timer = models.IntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.step} - {self.description}"
 
 
 class Ingredient(Common):
@@ -26,7 +37,6 @@ class Recipe(Common):
     description = models.TextField(null=True, blank=True)
     image = models.URLField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
-    instructions = ArrayField(models.TextField())
 
     ingredients = models.ManyToManyField(Ingredient, through="RecipeIngredient")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
