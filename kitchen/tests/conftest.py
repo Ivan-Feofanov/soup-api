@@ -1,6 +1,6 @@
 import pytest
 
-from kitchen.models import Unit, Ingredient, Recipe, RecipeIngredient
+from kitchen.models import Unit, Ingredient, Recipe, RecipeIngredient, Instruction
 
 
 @pytest.fixture
@@ -24,13 +24,21 @@ def ing_water():
 
 
 @pytest.fixture
-def recipe(user, ing_flour, ing_water, unit_g, unit_ml):
+def instructions(faker):
+    return [
+        Instruction(step=idx + 1, description=faker.sentence())
+        for idx in range(faker.random_int(1, 5))
+    ]
+
+
+@pytest.fixture
+def recipe(user, instructions, ing_flour, ing_water, unit_g, unit_ml):
     recipe = Recipe.objects.create(
         author=user,
         title="Bread",
         description="Simple bread",
-        instructions=["Mix", "Bake"],
     )
+    recipe.instructions.set(instructions, bulk=False)
     RecipeIngredient.objects.create(
         recipe=recipe,
         ingredient=ing_flour,

@@ -107,6 +107,20 @@ class RecipesController(ControllerBase):
                 description=payload.description,
                 notes=payload.notes,
             )
+
+            if payload.instructions:
+                instructions_for_create = []
+                for instruction in payload.instructions:
+                    instructions_for_create.append(
+                        Instruction(
+                            recipe=recipe,
+                            step=instruction.step,
+                            description=instruction.description,
+                            timer=instruction.timer,
+                        )
+                    )
+                Instruction.objects.bulk_create(instructions_for_create)
+
             for ingredient in payload.ingredients:
                 RecipeIngredient.objects.create(
                     recipe=recipe,

@@ -30,13 +30,22 @@ def test_get_recipe(client, recipe, user, ing_flour, ing_water, unit_g, unit_ml)
     resp = client.get(f"/api/kitchen/recipes/{recipe.uid}")
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
+    db_recipe = Recipe.objects.get(uid=recipe.uid)
 
-    assert data["uid"] == str(recipe.uid)
-    assert data["title"] == "Bread"
-    assert data["description"] == "Simple bread"
-    assert data["instructions"] == ["Mix", "Bake"]
-    assert data["notes"] is None
-    assert data["image"] is None
+    assert data["uid"] == str(db_recipe.uid)
+    assert data["title"] == db_recipe.title
+    assert data["description"] == db_recipe.description
+    assert data["instructions"] == [
+        {
+            "uid": str(x.uid),
+            "step": x.step,
+            "description": x.description,
+            "timer": x.timer,
+        }
+        for x in db_recipe.instructions.all()
+    ]
+    assert data["notes"] == db_recipe.notes
+    assert data["image"] == db_recipe.image
     # Ingredients resolved with unit abbreviation and quantity
     assert len(data["ingredients"]) == 2
     assert data["ingredients"][0]["quantity"] == 500
@@ -80,12 +89,17 @@ def test_create_recipe_non_auth(client, ing_flour):
 @pytest.mark.django_db
 def test_create_recipe(client, token, ing_flour, unit_g, user):
     url = "/api/kitchen/recipes/"
+    instr = {
+        "step": 1,
+        "description": "Mix all ingredients",
+        "timer": 10,
+    }
     payload = {
         "title": "Pancakes",
         "description": "Yummy",
         "image": None,
         "notes": None,
-        "instructions": ["Mix", "Fry"],
+        "instructions": [instr],
         "ingredients": [
             {
                 "ingredient_uid": str(ing_flour.uid),
@@ -106,6 +120,12 @@ def test_create_recipe(client, token, ing_flour, unit_g, user):
     new_recipe = Recipe.objects.get(title="Pancakes")
 
     assert data["title"] == "Pancakes"
+    assert data["description"] == "Yummy"
+    assert data["notes"] is None
+    assert len(data["instructions"]) == 1
+    assert data["instructions"][0]["step"] == instr["step"]
+    assert data["instructions"][0]["description"] == instr["description"]
+    assert data["instructions"][0]["timer"] == instr["timer"]
     assert len(data["ingredients"]) == 1
     # DB side checks
     assert Recipe.objects.filter(title="Pancakes", author=user).exists()
@@ -122,7 +142,13 @@ def test_update_recipe(client, token, recipe):
     new_title = "Coffee"
     new_description = "Yummy"
     new_notes = "Not so yummy"
-    new_instructions = ["Do", "Blend"]
+    new_instructions = [
+        {
+            "step": 1,
+            "description": "Mix all ingredients",
+            "timer": 10,
+        }
+    ]
     url = f"/api/kitchen/recipes/{recipe.uid}"
     payload = {
         "title": new_title,
@@ -151,7 +177,10 @@ def test_update_recipe(client, token, recipe):
     assert data["title"] == new_title
     assert data["description"] == new_description
     assert data["notes"] == new_notes
-    assert data["instructions"] == new_instructions
+    assert len(data["instructions"]) == 1
+    assert data["instructions"][0]["step"] == new_instructions[0]["step"]
+    assert data["instructions"][0]["description"] == new_instructions[0]["description"]
+    assert data["instructions"][0]["timer"] == new_instructions[0]["timer"]
     assert len(data["ingredients"]) == 1
     assert data["ingredients"][0]["quantity"] == 100
     assert data["ingredients"][0]["ingredient"]["uid"] == str(new_ing.uid)
@@ -167,7 +196,7 @@ def test_update_recipe_forbidden_for_non_author(client, get_token, other_user, r
         "description": "Hacked",
         "image": None,
         "notes": None,
-        "instructions": ["Do"],
+        "instructions": [],
         "ingredients": [],  # keep empty to avoid ingredient changes
     }
     auth_token = get_token(other_user)
