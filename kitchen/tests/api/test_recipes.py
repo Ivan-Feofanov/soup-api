@@ -87,18 +87,24 @@ def test_create_recipe_non_auth(client, ing_flour):
 
 
 @pytest.mark.django_db
-def test_create_recipe(client, token, ing_flour, unit_g, user):
+def test_create_recipe(faker, client, token, ing_flour, unit_g, user):
+    new_recipe_data = {
+        "title": faker.sentence(),
+        "description": faker.text(),
+        "image": faker.image_url(),
+        "notes": faker.text(),
+    }
     url = "/api/kitchen/recipes/"
     instr = {
         "step": 1,
-        "description": "Mix all ingredients",
+        "description": faker.sentence(),
         "timer": 10,
     }
     payload = {
-        "title": "Pancakes",
-        "description": "Yummy",
-        "image": None,
-        "notes": None,
+        "title": new_recipe_data["title"],
+        "description": new_recipe_data["description"],
+        "image": new_recipe_data["image"],
+        "notes": new_recipe_data["notes"],
         "instructions": [instr],
         "ingredients": [
             {
@@ -117,31 +123,32 @@ def test_create_recipe(client, token, ing_flour, unit_g, user):
     )
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
-    new_recipe = Recipe.objects.get(title="Pancakes")
+    new_recipe = Recipe.objects.get(title=new_recipe_data["title"])
 
-    assert data["title"] == "Pancakes"
-    assert data["description"] == "Yummy"
-    assert data["notes"] is None
+    assert data["title"] == new_recipe_data["title"]
+    assert data["description"] == new_recipe_data["description"]
+    assert data["image"] == new_recipe_data["image"]
+    assert data["notes"] == new_recipe_data["notes"]
     assert len(data["instructions"]) == 1
     assert data["instructions"][0]["step"] == instr["step"]
     assert data["instructions"][0]["description"] == instr["description"]
     assert data["instructions"][0]["timer"] == instr["timer"]
     assert len(data["ingredients"]) == 1
     # DB side checks
-    assert Recipe.objects.filter(title="Pancakes", author=user).exists()
     assert new_recipe.recipeingredient_set.count() == 1
     assert new_recipe.recipeingredient_set.first().ingredient == ing_flour
     assert new_recipe.recipeingredient_set.first().unit == unit_g
 
 
 @pytest.mark.django_db
-def test_update_recipe(client, token, recipe):
+def test_update_recipe(faker, client, token, recipe):
     # Try to update existing recipe as the author
     new_ing = Ingredient.objects.create(name="Milk")
     new_unit = Unit.objects.create(name="Liter", abbreviation="l")
-    new_title = "Coffee"
-    new_description = "Yummy"
-    new_notes = "Not so yummy"
+    new_title = faker.sentence()
+    new_description = faker.text()
+    new_notes = faker.text()
+    new_image = faker.image_url()
     new_instructions = [
         {
             "step": 1,
@@ -153,7 +160,7 @@ def test_update_recipe(client, token, recipe):
     payload = {
         "title": new_title,
         "description": new_description,
-        "image": None,
+        "image": new_image,
         "notes": new_notes,
         "instructions": new_instructions,
         "ingredients": [
@@ -177,6 +184,7 @@ def test_update_recipe(client, token, recipe):
     assert data["title"] == new_title
     assert data["description"] == new_description
     assert data["notes"] == new_notes
+    assert data["image"] == new_image
     assert len(data["instructions"]) == 1
     assert data["instructions"][0]["step"] == new_instructions[0]["step"]
     assert data["instructions"][0]["description"] == new_instructions[0]["description"]

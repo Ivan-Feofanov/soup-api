@@ -26,7 +26,7 @@ class Instruction(Common):
 
 class Ingredient(Common):
     name = models.CharField(max_length=255, db_index=True)
-    image = models.URLField(null=True, blank=True)
+    image = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -35,8 +35,8 @@ class Ingredient(Common):
 class Recipe(Common):
     title = models.CharField(max_length=255, db_index=True)
     description = models.TextField(null=True, blank=True)
-    image = models.URLField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
+    image = models.CharField(max_length=255, null=True, blank=True)
 
     ingredients = models.ManyToManyField(Ingredient, through="RecipeIngredient")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

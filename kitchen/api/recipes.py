@@ -106,6 +106,7 @@ class RecipesController(ControllerBase):
                 title=payload.title,
                 description=payload.description,
                 notes=payload.notes,
+                image=payload.image,
             )
 
             if payload.instructions:
