@@ -82,9 +82,13 @@ class RecipeCreateSchema(Schema):
 class RecipesController(ControllerBase):
     @http_get("/", response=list[RecipeSchema])
     def list_recipes(self, request):
-        return Recipe.objects.select_related("author").prefetch_related(
-            "recipeingredient_set__ingredient",
-            "recipeingredient_set__unit",
+        return (
+            Recipe.objects.select_related("author")
+            .prefetch_related(
+                "recipeingredient_set__ingredient",
+                "recipeingredient_set__unit",
+            )
+            .order_by("-updated_at")
         )
 
     @http_get("/{uuid:uid}", response=RecipeSchema)
