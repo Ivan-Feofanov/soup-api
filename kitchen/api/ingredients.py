@@ -1,6 +1,6 @@
 from ninja import ModelSchema, Schema
 from ninja_extra import api_controller, http_get, ControllerBase, http_post, status
-from ninja_extra.permissions import IsAuthenticated
+from ninja_jwt.authentication import JWTAuth
 
 from kitchen.models import Ingredient
 
@@ -28,7 +28,7 @@ class IngredientsController(ControllerBase):
             status.HTTP_200_OK: IngredientSchema,
             status.HTTP_201_CREATED: IngredientSchema,
         },
-        permissions=[IsAuthenticated],
+        auth=JWTAuth(),
     )
     def create_ingredient(self, request, payload: IngredientCreateSchema):
         existing_ingredient = Ingredient.objects.filter(name=payload.name).first()

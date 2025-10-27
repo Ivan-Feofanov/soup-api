@@ -14,8 +14,9 @@ from ninja_extra import (
     http_delete,
 )
 from ninja_extra.exceptions import PermissionDenied
-from ninja_extra.permissions import IsAuthenticated
+from ninja_jwt.authentication import JWTAuth
 
+from users.authentication import OptionalJWTAuth
 from kitchen.api.ingredients import IngredientSchema
 from kitchen.api.units import UnitSchema
 from kitchen.models import Recipe, RecipeIngredient, Instruction
@@ -101,6 +102,7 @@ class RecipesController(ControllerBase):
     @http_get(
         "/",
         response=list[RecipeShortSchema],
+        auth=OptionalJWTAuth(),
     )
     def list_recipes(self, request):
         qs = Recipe.objects.select_related("author").prefetch_related(
@@ -124,7 +126,7 @@ class RecipesController(ControllerBase):
             status.HTTP_201_CREATED: RecipeSchema,
             status.HTTP_400_BAD_REQUEST: dict,
         },
-        permissions=[IsAuthenticated],
+        auth=JWTAuth(),
     )
     def create_recipe(self, request, payload: RecipeCreateSchema):
         with atomic():
@@ -162,7 +164,7 @@ class RecipesController(ControllerBase):
     @http_patch(
         "/{uuid:uid}",
         response=RecipeSchema,
-        permissions=[IsAuthenticated],
+        auth=JWTAuth(),
     )
     def update_recipe(self, request, uid: uuid.UUID, payload: RecipeCreateSchema):
         recipe = get_object_or_404(Recipe, uid=uid)
@@ -209,7 +211,7 @@ class RecipesController(ControllerBase):
     @http_delete(
         path="/{uuid:uid}",
         response={status.HTTP_204_NO_CONTENT: None},
-        permissions=[IsAuthenticated],
+        auth=JWTAuth(),
     )
     def delete_recipe(self, request, uid: uuid.UUID):
         recipe = get_object_or_404(Recipe, uid=uid)

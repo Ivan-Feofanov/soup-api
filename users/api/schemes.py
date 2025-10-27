@@ -25,3 +25,5 @@ class UserUpdateSchema(BaseModel):
 
 class AuthResponseSchema(BaseModel):
     user: UserSchema
+    access_token: str
+    refresh_token: str

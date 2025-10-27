@@ -1,7 +1,7 @@
 from django.db.models import Q
 from ninja import ModelSchema
 from ninja_extra import api_controller, ControllerBase, http_get, http_post, status
-from ninja_extra.permissions import IsAuthenticated
+from ninja_jwt.authentication import JWTAuth
 
 from kitchen.models import Unit
 
@@ -21,7 +21,7 @@ class UnitsController(ControllerBase):
     @http_post(
         "/",
         response={status.HTTP_200_OK: UnitSchema, status.HTTP_201_CREATED: UnitSchema},
-        permissions=[IsAuthenticated],
+        auth=JWTAuth(),
     )
     def create_unit(self, request, payload: UnitSchema):
         unit_name = payload.name.lower().strip()

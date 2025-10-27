@@ -38,11 +38,10 @@ DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "soup.feofanov.dev", "soup-api.feofanov.dev"]
 CORS_ALLOW_HEADERS = (
     *default_headers,
-    "x-session-token",
     "x-email-verification-key",
     "x-password-reset-key",
 )
-CORS_ALLOW_CREDENTIALS = True
+# Note: CORS_ALLOW_CREDENTIALS not needed for JWT (tokens in Authorization header)
 CORS_ALLOWED_ORIGINS = ["http://localhost:5173", "https://soup.feofanov.dev"]
 CSRF_TRUSTED_ORIGINS = [
     "https://soup.feofanov.dev",
@@ -64,6 +63,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Authentication
     "social_django",
+    "ninja_jwt",
     # Apps
     "ninja_extra",
     "users.apps.UsersConfig",
@@ -138,19 +138,15 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.user.user_details",
 )
 
-COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN", "soup.feofanov.dev")
-# Session cookie settings for cross-subdomain authentication
-SESSION_COOKIE_HTTPONLY = True  # Keep this for security
-SESSION_COOKIE_SAMESITE = "None"  # Required for cross-site requests
-SESSION_COOKIE_SECURE = True  # Required when SameSite=None (HTTPS only)
-SESSION_COOKIE_DOMAIN = None if DEBUG else COOKIE_DOMAIN
+# Session and cookie settings (kept for Django admin)
+# Note: API authentication now uses JWT tokens, not sessions
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = True if not DEBUG else False
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days
 
-# CSRF cookie settings (if you need CSRF protection)
-CSRF_COOKIE_HTTPONLY = False  # JS needs to read this
-CSRF_COOKIE_SAMESITE = "None"  # Match session cookie
-CSRF_COOKIE_SECURE = True  # Required when SameSite=None
-CSRF_COOKIE_DOMAIN = None if DEBUG else COOKIE_DOMAIN
+# CSRF settings (for Django admin and forms)
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SECURE = True if not DEBUG else False
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -216,3 +212,25 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 #         }
 #     },
 # }
+
+# JWT Settings
+from datetime import timedelta
+
+NINJA_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "VERIFYING_KEY": None,
+    "AUDIENCE": None,
+    "ISSUER": None,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "uid",  # Using uid instead of id
+    "USER_ID_CLAIM": "user_id",
+    "AUTH_TOKEN_CLASSES": ("ninja_jwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+}

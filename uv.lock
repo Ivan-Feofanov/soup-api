@@ -317,6 +317,20 @@ wheels = [
 ]
 
 [[package]]
+name = "django-ninja-jwt"
+version = "5.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+    { name = "django-ninja-extra" },
+    { name = "pyjwt", extra = ["crypto"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/6c/94e7b1fd4cb9036c5ad190b4983c72c61fe0c7833a43abb837b2fb885984/django_ninja_jwt-5.4.0.tar.gz", hash = "sha256:7b61056a1e522473c0bc9734075e6fb53eec02dea08195d38602e5ffa863bb4c", size = 40156 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0d/ac/24260402a7336a148909ad8827780c57ffa651e3930d9c1502222213095b/django_ninja_jwt-5.4.0-py3-none-any.whl", hash = "sha256:2de0c7e0122bf22a5425a1ce19a7fbaefcad96aae55bb6485c3b5e23c516d7b3", size = 88723 },
+]
+
+[[package]]
 name = "dnspython"
 version = "2.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -694,6 +708,7 @@ dependencies = [
     { name = "django-cors-headers" },
     { name = "django-ninja" },
     { name = "django-ninja-extra" },
+    { name = "django-ninja-jwt" },
     { name = "dotenv" },
     { name = "gunicorn" },
     { name = "ninja-schema" },
@@ -722,6 +737,7 @@ requires-dist = [
     { name = "django-cors-headers", specifier = ">=4.9.0" },
     { name = "django-ninja", specifier = ">=1.4.3" },
     { name = "django-ninja-extra", specifier = ">=0.30.1" },
+    { name = "django-ninja-jwt", specifier = ">=5.4.0" },
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "ninja-schema", specifier = ">=0.14.3" },

@@ -123,7 +123,8 @@ def test_create_recipe_non_auth(client, ing_flour):
 
     r = client.post(url, data=payload, content_type="application/json")
 
-    assert r.status_code == status.HTTP_403_FORBIDDEN
+    # JWT returns 401 for unauthenticated requests
+    assert r.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.django_db
