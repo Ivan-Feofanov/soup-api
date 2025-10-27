@@ -93,6 +93,7 @@ class RecipeCreateSchema(Schema):
     notes: str | None = None
     instructions: list[InstructionCreateSchema]
     ingredients: list[IngredientInRecipeCreateSchema]
+    visibility: Recipe.Visibility = Recipe.Visibility.PRIVATE
 
 
 @api_controller("/kitchen/recipes", tags=["Recipes"])
@@ -206,7 +207,9 @@ class RecipesController(ControllerBase):
         return recipe
 
     @http_delete(
-        path="/{uuid:uid}", response={status.HTTP_204_NO_CONTENT: None}, permissions=[IsAuthenticated]
+        path="/{uuid:uid}",
+        response={status.HTTP_204_NO_CONTENT: None},
+        permissions=[IsAuthenticated],
     )
     def delete_recipe(self, request, uid: uuid.UUID):
         recipe = get_object_or_404(Recipe, uid=uid)

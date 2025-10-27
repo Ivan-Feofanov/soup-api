@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
-from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
@@ -139,16 +138,18 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.user.user_details",
 )
 
-# Session cookie settings
-SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access (XSS protection)
-SESSION_COOKIE_SAMESITE = "Lax"  # CSRF protection
-SESSION_COOKIE_SECURE = not DEBUG  # Use secure cookies in production (HTTPS only)
+# Session cookie settings for cross-subdomain authentication
+SESSION_COOKIE_HTTPONLY = True  # Keep this for security
+SESSION_COOKIE_SAMESITE = "None"  # Required for cross-site requests
+SESSION_COOKIE_SECURE = True  # Required when SameSite=None (HTTPS only)
+SESSION_COOKIE_DOMAIN = ".feofanov.dev"  # Share across all *.feofanov.dev subdomains
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days
 
-# CSRF cookie settings
-CSRF_COOKIE_HTTPONLY = False  # CSRF token needs to be readable by JS
-CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SECURE = not DEBUG  # Use secure cookies in production (HTTPS only)
+# CSRF cookie settings (if you need CSRF protection)
+CSRF_COOKIE_HTTPONLY = False  # JS needs to read this
+CSRF_COOKIE_SAMESITE = "None"  # Match session cookie
+CSRF_COOKIE_SECURE = True  # Required when SameSite=None
+CSRF_COOKIE_DOMAIN = ".feofanov.dev"  # Share across subdomains
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
