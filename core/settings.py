@@ -138,18 +138,19 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.user.user_details",
 )
 
+COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN", "soup.feofanov.dev")
 # Session cookie settings for cross-subdomain authentication
 SESSION_COOKIE_HTTPONLY = True  # Keep this for security
 SESSION_COOKIE_SAMESITE = "None"  # Required for cross-site requests
 SESSION_COOKIE_SECURE = True  # Required when SameSite=None (HTTPS only)
-SESSION_COOKIE_DOMAIN = ".feofanov.dev"  # Share across all *.feofanov.dev subdomains
+SESSION_COOKIE_DOMAIN = None if DEBUG else COOKIE_DOMAIN
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days
 
 # CSRF cookie settings (if you need CSRF protection)
 CSRF_COOKIE_HTTPONLY = False  # JS needs to read this
 CSRF_COOKIE_SAMESITE = "None"  # Match session cookie
 CSRF_COOKIE_SECURE = True  # Required when SameSite=None
-CSRF_COOKIE_DOMAIN = ".feofanov.dev"  # Share across subdomains
+CSRF_COOKIE_DOMAIN = None if DEBUG else COOKIE_DOMAIN
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
