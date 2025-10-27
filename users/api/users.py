@@ -10,7 +10,6 @@ from ninja_extra import (
 )
 from ninja_extra.exceptions import APIException, PermissionDenied
 from ninja_extra.permissions import IsAuthenticated
-from ninja_jwt.authentication import JWTAuth
 
 from users.api.schemes import UserSchema, UserUpdateSchema
 
@@ -20,7 +19,7 @@ class ValidationException(APIException):
     default_detail = "something went wrong"
 
 
-@api_controller("/users", tags=["users"], permissions=[IsAuthenticated], auth=JWTAuth())
+@api_controller("/users", tags=["users"], permissions=[IsAuthenticated])
 class UserModelController(ControllerBase):
     @http_get("/me", response=UserSchema)
     def me(self, request):

@@ -33,10 +33,20 @@ class Ingredient(Common):
 
 
 class Recipe(Common):
+    class Visibility(models.TextChoices):
+        PUBLIC = "PUBLIC"
+        FRIENDS = "FRIENDS"
+        PRIVATE = "PRIVATE"
+
     title = models.CharField(max_length=255, db_index=True)
     description = models.TextField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
     image = models.CharField(max_length=255, null=True, blank=True)
+    visibility = models.CharField(
+        max_length=10,
+        choices=Visibility.choices,
+        default=Visibility.PRIVATE,
+    )
 
     ingredients = models.ManyToManyField(Ingredient, through="RecipeIngredient")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

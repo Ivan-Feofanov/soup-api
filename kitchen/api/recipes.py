@@ -1,5 +1,6 @@
 import uuid
 
+from django.db.models import Q
 from django.db.transaction import atomic
 from django.shortcuts import get_object_or_404
 from ninja import Schema, ModelSchema
@@ -13,7 +14,7 @@ from ninja_extra import (
     http_delete,
 )
 from ninja_extra.exceptions import PermissionDenied
-from ninja_jwt.authentication import JWTAuth
+from ninja_extra.permissions import IsAuthenticated
 
 from kitchen.api.ingredients import IngredientSchema
 from kitchen.api.units import UnitSchema
@@ -52,7 +53,23 @@ class IngredientInRecipeSchema(ModelSchema):
 class AuthorSchema(ModelSchema):
     class Meta:
         model = CustomUser
-        fields = ["uid", "email", "username", "handler"]
+        fields = ["uid", "username", "handler"]
+
+
+class RecipeShortSchema(ModelSchema):
+    class Meta:
+        model = Recipe
+        fields = [
+            "uid",
+            "title",
+            "description",
+            "image",
+            "visibility",
+            "author",
+            "updated_at",
+        ]
+
+    author: AuthorSchema | None = None
 
 
 class RecipeSchema(ModelSchema):
@@ -80,16 +97,21 @@ class RecipeCreateSchema(Schema):
 
 @api_controller("/kitchen/recipes", tags=["Recipes"])
 class RecipesController(ControllerBase):
-    @http_get("/", response=list[RecipeSchema])
+    @http_get(
+        "/",
+        response=list[RecipeShortSchema],
+    )
     def list_recipes(self, request):
-        return (
-            Recipe.objects.select_related("author")
-            .prefetch_related(
-                "recipeingredient_set__ingredient",
-                "recipeingredient_set__unit",
-            )
-            .order_by("-updated_at")
+        qs = Recipe.objects.select_related("author").prefetch_related(
+            "recipeingredient_set__ingredient",
+            "recipeingredient_set__unit",
         )
+        if request.user.is_authenticated:
+            qs = qs.filter(Q(author=request.user) | Q(visibility="PUBLIC"))
+        else:
+            qs = qs.filter(visibility="PUBLIC")
+
+        return qs.order_by("-updated_at")
 
     @http_get("/{uuid:uid}", response=RecipeSchema)
     def get_recipe(self, request, uid: uuid.UUID):
@@ -101,7 +123,7 @@ class RecipesController(ControllerBase):
             status.HTTP_201_CREATED: RecipeSchema,
             status.HTTP_400_BAD_REQUEST: dict,
         },
-        auth=JWTAuth(),
+        permissions=[IsAuthenticated],
     )
     def create_recipe(self, request, payload: RecipeCreateSchema):
         with atomic():
@@ -139,7 +161,7 @@ class RecipesController(ControllerBase):
     @http_patch(
         "/{uuid:uid}",
         response=RecipeSchema,
-        auth=JWTAuth(),
+        permissions=[IsAuthenticated],
     )
     def update_recipe(self, request, uid: uuid.UUID, payload: RecipeCreateSchema):
         recipe = get_object_or_404(Recipe, uid=uid)
@@ -184,7 +206,7 @@ class RecipesController(ControllerBase):
         return recipe
 
     @http_delete(
-        path="/{uuid:uid}", response={status.HTTP_204_NO_CONTENT: None}, auth=JWTAuth()
+        path="/{uuid:uid}", response={status.HTTP_204_NO_CONTENT: None}, permissions=[IsAuthenticated]
     )
     def delete_recipe(self, request, uid: uuid.UUID):
         recipe = get_object_or_404(Recipe, uid=uid)

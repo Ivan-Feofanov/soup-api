@@ -14,13 +14,12 @@ def test_me_requires_auth(client):
 
 
 @pytest.mark.django_db
-def test_me_returns_current_user(client, user, get_token):
+def test_me_returns_current_user(authenticated_client, user):
     # Arrange
     url = "/api/users/me"
-    auth_token = get_token(user)
 
     # Act
-    resp = client.get(url, HTTP_AUTHORIZATION=f"Bearer {auth_token}")
+    resp = authenticated_client.get(url)
 
     # Assert
     assert resp.status_code == 200
@@ -32,10 +31,9 @@ def test_me_returns_current_user(client, user, get_token):
 
 
 @pytest.mark.django_db
-def test_update_user_self_success(client, user, get_token):
+def test_update_user_self_success(authenticated_client, user):
     # Arrange
     url = f"/api/users/{user.uid}"
-    token = get_token(user)
     payload = {
         "username": "Johnny",
         "handler": "chef-johnny",
@@ -43,11 +41,10 @@ def test_update_user_self_success(client, user, get_token):
     }
 
     # Act
-    resp = client.patch(
+    resp = authenticated_client.patch(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
 
     # Assert
@@ -64,18 +61,16 @@ def test_update_user_self_success(client, user, get_token):
 
 
 @pytest.mark.django_db
-def test_update_user_forbidden_when_other_uid(client, user, other_user, get_token):
+def test_update_user_forbidden_when_other_uid(authenticated_client, user, other_user):
     # Arrange: user tries to update another user's profile
     url = f"/api/users/{other_user.uid}"
-    token = get_token(user)
     payload = {"username": "hacker"}
 
     # Act
-    resp = client.patch(
+    resp = authenticated_client.patch(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
 
     # Assert
@@ -88,21 +83,19 @@ def test_update_user_forbidden_when_other_uid(client, user, other_user, get_toke
 
 @pytest.mark.django_db
 def test_update_user_validation_error_duplicate_handler(
-    client, user, other_user, get_token
+    authenticated_client, user, other_user
 ):
     # Arrange: make other_user handler taken, then try to set same handler for user
     other_user.handler = "taken"
     other_user.save()
     url = f"/api/users/{user.uid}"
-    token = get_token(user)
     payload = {"handler": "taken"}
 
     # Act
-    resp = client.patch(
+    resp = authenticated_client.patch(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
 
     # Assert

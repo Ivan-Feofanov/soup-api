@@ -5,24 +5,63 @@ from kitchen.models import Ingredient, Unit, Recipe
 
 
 @pytest.mark.django_db
-def test_list_recipes(client, recipe, user):
-    resp = client.get("/api/kitchen/recipes/")
+def test_list_recipes_private(authenticated_client, recipe, user):
+    resp = authenticated_client.get("/api/kitchen/recipes/")
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
     first = data[0]
-    ing_names = sorted(i["ingredient"]["name"] for i in first["ingredients"])
-    units = sorted(i["unit"]["abbreviation"] for i in first["ingredients"])
 
     assert isinstance(data, list)
     assert len(data) >= 1
     assert first["title"] == "Bread"
     # Author block
     assert "author" in first
-    assert first["author"]["email"] == user.email
-    # Ingredients resolved with unit abbreviation and quantity
-    assert "ingredients" in first
-    assert ing_names == ["Flour", "Water"]
-    assert sorted(units) == ["g", "ml"]
+    assert first["author"]["username"] == user.username
+    assert first["author"]["handler"] == user.handler
+
+
+@pytest.mark.django_db
+def test_list_recipes_unauthenticated(client, recipe, user):
+    resp = client.get("/api/kitchen/recipes/")
+    assert resp.status_code == status.HTTP_200_OK
+
+    assert resp.json() == []
+
+
+@pytest.mark.django_db
+def test_list_recipes_unauthenticated_public(client, recipe, user):
+    recipe.visibility = "PUBLIC"
+    recipe.save()
+
+    resp = client.get("/api/kitchen/recipes/")
+    assert resp.status_code == status.HTTP_200_OK
+    data = resp.json()
+
+    assert len(data) == 1
+    assert data[0]["uid"] == str(recipe.uid)
+
+
+@pytest.mark.django_db
+def test_list_recipes_public_and_private(authenticated_client, recipe, other_user):
+    public_recipe = other_user.recipe_set.create(
+        author=other_user,
+        title="Other's recipe",
+        description="Other's description",
+        visibility=Recipe.Visibility.PUBLIC,
+    )
+    other_user.recipe_set.create(
+        author=other_user,
+        title="Other's recipe",
+        description="Other's description",
+        visibility=Recipe.Visibility.PRIVATE,
+    )
+
+    resp = authenticated_client.get("/api/kitchen/recipes/")
+    assert resp.status_code == status.HTTP_200_OK
+    data = resp.json()
+
+    assert len(data) == 2
+    assert {x["uid"] for x in data} == {str(recipe.uid), str(public_recipe.uid)}
 
 
 @pytest.mark.django_db
@@ -62,7 +101,8 @@ def test_get_recipe(client, recipe, user, ing_flour, ing_water, unit_g, unit_ml)
     assert data["ingredients"][1]["unit"]["name"] == "Milliliter"
     # Author block
     assert "author" in data
-    assert data["author"]["email"] == user.email
+    assert data["author"]["username"] == user.username
+    assert data["author"]["handler"] == user.handler
 
 
 @pytest.mark.django_db
@@ -83,11 +123,11 @@ def test_create_recipe_non_auth(client, ing_flour):
 
     r = client.post(url, data=payload, content_type="application/json")
 
-    assert r.status_code == status.HTTP_401_UNAUTHORIZED
+    assert r.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.django_db
-def test_create_recipe(faker, client, token, ing_flour, unit_g, user):
+def test_create_recipe(faker, authenticated_client, ing_flour, unit_g, user):
     new_recipe_data = {
         "title": faker.sentence(),
         "description": faker.text(),
@@ -115,11 +155,10 @@ def test_create_recipe(faker, client, token, ing_flour, unit_g, user):
         ],
     }
 
-    response = client.post(
+    response = authenticated_client.post(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
@@ -141,7 +180,7 @@ def test_create_recipe(faker, client, token, ing_flour, unit_g, user):
 
 
 @pytest.mark.django_db
-def test_update_recipe(faker, client, token, recipe):
+def test_update_recipe(faker, authenticated_client, recipe):
     # Try to update existing recipe as the author
     new_ing = Ingredient.objects.create(name="Milk")
     new_unit = Unit.objects.create(name="Liter", abbreviation="l")
@@ -172,11 +211,10 @@ def test_update_recipe(faker, client, token, recipe):
         ],
     }
 
-    resp = client.patch(
+    resp = authenticated_client.patch(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
@@ -196,7 +234,9 @@ def test_update_recipe(faker, client, token, recipe):
 
 
 @pytest.mark.django_db
-def test_update_recipe_forbidden_for_non_author(client, get_token, other_user, recipe):
+def test_update_recipe_forbidden_for_non_author(
+    client, get_authenticated_client, other_user, recipe
+):
     # Try to update existing recipe as a different user
     url = f"/api/kitchen/recipes/{recipe.uid}"
     payload = {
@@ -207,13 +247,12 @@ def test_update_recipe_forbidden_for_non_author(client, get_token, other_user, r
         "instructions": [],
         "ingredients": [],  # keep empty to avoid ingredient changes
     }
-    auth_token = get_token(other_user)
+    other_client = get_authenticated_client(other_user)
 
-    resp = client.patch(
+    resp = other_client.patch(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {auth_token}",
     )
 
     assert resp.status_code == status.HTTP_403_FORBIDDEN
@@ -224,12 +263,11 @@ def test_update_recipe_forbidden_for_non_author(client, get_token, other_user, r
 
 
 @pytest.mark.django_db
-def test_delete_recipe(client, token, recipe):
+def test_delete_recipe(authenticated_client, recipe):
     url = f"/api/kitchen/recipes/{recipe.uid}"
-    resp = client.delete(
+    resp = authenticated_client.delete(
         url,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
 
     assert resp.status_code == status.HTTP_204_NO_CONTENT
@@ -237,13 +275,14 @@ def test_delete_recipe(client, token, recipe):
 
 
 @pytest.mark.django_db
-def test_delete_recipe_forbidden_for_non_author(client, get_token, other_user, recipe):
+def test_delete_recipe_forbidden_for_non_author(
+    client, get_authenticated_client, other_user, recipe
+):
     url = f"/api/kitchen/recipes/{recipe.uid}"
-    auth_token = get_token(other_user)
+    other_client = get_authenticated_client(other_user)
 
-    resp = client.delete(
+    resp = other_client.delete(
         url,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {auth_token}",
     )
     assert resp.status_code == status.HTTP_403_FORBIDDEN

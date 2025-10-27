@@ -1,6 +1,5 @@
 import pytest
 from django.test import Client
-from ninja_jwt.tokens import RefreshToken
 
 from users.models import CustomUser
 
@@ -36,14 +35,16 @@ def other_user(password):
 
 
 @pytest.fixture
-def get_token():
-    def _get(user: CustomUser) -> str:
-        refresh = RefreshToken.for_user(user)
-        return str(refresh.access_token)
-
-    return _get
+def authenticated_client(client, user):
+    """Returns a client with an authenticated session for the default user."""
+    client.force_login(user)
+    return client
 
 
 @pytest.fixture
-def token(user, get_token):
-    return get_token(user)
+def get_authenticated_client(client):
+    """Returns a function that creates an authenticated client for any user."""
+    def _get(user: CustomUser):
+        client.force_login(user)
+        return client
+    return _get

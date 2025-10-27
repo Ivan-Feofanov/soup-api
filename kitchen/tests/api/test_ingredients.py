@@ -15,15 +15,14 @@ def test_list_ingredients(client, ing_flour, ing_water):
 
 
 @pytest.mark.django_db
-def test_create_ingredient(client, token):
+def test_create_ingredient(authenticated_client):
     url = "/api/kitchen/ingredients/"
     payload = {"name": "Sugar"}
 
-    resp = client.post(
+    resp = authenticated_client.post(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
     assert resp.status_code == status.HTTP_201_CREATED
     data = resp.json()
@@ -34,23 +33,21 @@ def test_create_ingredient(client, token):
 
 @pytest.mark.parametrize("name", ["Sugar", "sugar", "SUGAR", "sugar ", " sugar"])
 @pytest.mark.django_db
-def test_create_ingredient_idempotent_by_name(client, token, name):
+def test_create_ingredient_idempotent_by_name(authenticated_client, name):
     url = "/api/kitchen/ingredients/"
     payload = {"name": name}
-    r1 = client.post(
+    r1 = authenticated_client.post(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
     first_uid = r1.json()["uid"]
 
     # Posting same name should return existing ingredient (same uid)
-    r2 = client.post(
+    r2 = authenticated_client.post(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
 
     assert r2.status_code == status.HTTP_200_OK

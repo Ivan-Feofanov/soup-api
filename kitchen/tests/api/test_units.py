@@ -16,14 +16,13 @@ def test_list_units(client, unit_g, unit_ml):
 
 
 @pytest.mark.django_db
-def test_create_unit(client, token):
+def test_create_unit(authenticated_client):
     url = "/api/kitchen/units/"
     payload = {"name": "Sugar", "abbreviation": "sg"}
-    resp = client.post(
+    resp = authenticated_client.post(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
     assert resp.status_code == status.HTTP_201_CREATED
 
@@ -32,14 +31,13 @@ def test_create_unit(client, token):
 
 
 @pytest.mark.django_db
-def test_create_unit_idempotent_by_abbreviation(client, token, unit_g):
+def test_create_unit_idempotent_by_abbreviation(authenticated_client, unit_g):
     url = "/api/kitchen/units/"
     payload = {"name": "Sugar", "abbreviation": "g"}
-    resp = client.post(
+    resp = authenticated_client.post(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
 
     assert resp.status_code == status.HTTP_200_OK
@@ -51,14 +49,13 @@ def test_create_unit_idempotent_by_abbreviation(client, token, unit_g):
 
 @pytest.mark.parametrize("name", ["gram", "Gram", "gram ", " gram"])
 @pytest.mark.django_db
-def test_create_unit_idempotent_by_name(client, token, unit_g, name: str):
+def test_create_unit_idempotent_by_name(authenticated_client, unit_g, name: str):
     url = "/api/kitchen/units/"
     payload = {"name": name, "abbreviation": "sg"}
-    resp = client.post(
+    resp = authenticated_client.post(
         url,
         data=payload,
         content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
     )
 
     assert resp.status_code == status.HTTP_200_OK

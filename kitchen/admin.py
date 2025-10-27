@@ -24,7 +24,7 @@ class InstructionInline(admin.StackedInline):
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    fields = ["title", "description", "image", "notes", "author"]
+    fields = ["visibility", "title", "description", "image", "notes", "author"]
     readonly_fields = ["uid"]
     inlines = [InstructionInline, RecipeIngredientInline]
 

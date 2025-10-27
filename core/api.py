@@ -1,5 +1,4 @@
 from ninja_extra import NinjaExtraAPI
-from ninja_jwt.controller import NinjaJWTDefaultController
 
 from kitchen.api.ingredients import IngredientsController
 from kitchen.api.recipes import RecipesController
@@ -9,7 +8,6 @@ from users.api.users import UserModelController
 
 api = NinjaExtraAPI()
 
-api.register_controllers(NinjaJWTDefaultController)
 api.register_controllers(UserModelController)
 api.register_controllers(RecipesController)
 api.register_controllers(IngredientsController)
