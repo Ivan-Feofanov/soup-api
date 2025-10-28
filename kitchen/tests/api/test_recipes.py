@@ -65,8 +65,10 @@ def test_list_recipes_public_and_private(authenticated_client, recipe, other_use
 
 
 @pytest.mark.django_db
-def test_get_recipe(client, recipe, user, ing_flour, ing_water, unit_g, unit_ml):
-    resp = client.get(f"/api/kitchen/recipes/{recipe.uid}")
+def test_get_recipe(
+    authenticated_client, recipe, user, ing_flour, ing_water, unit_g, unit_ml
+):
+    resp = authenticated_client.get(f"/api/kitchen/recipes/{recipe.uid}")
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
     db_recipe = Recipe.objects.get(uid=recipe.uid)
@@ -103,6 +105,18 @@ def test_get_recipe(client, recipe, user, ing_flour, ing_water, unit_g, unit_ml)
     assert "author" in data
     assert data["author"]["username"] == user.username
     assert data["author"]["handler"] == user.handler
+
+
+@pytest.mark.django_db
+def test_get_public_recipe(client, recipe, user, ing_flour, ing_water, unit_g, unit_ml):
+    recipe.visibility = "PUBLIC"
+    recipe.save()
+
+    resp = client.get(f"/api/kitchen/recipes/{recipe.uid}")
+    assert resp.status_code == status.HTTP_200_OK
+    data = resp.json()
+
+    assert data["uid"] == str(recipe.uid)
 
 
 @pytest.mark.django_db

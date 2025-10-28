@@ -99,12 +99,8 @@ class RecipeCreateSchema(Schema):
 
 @api_controller("/kitchen/recipes", tags=["Recipes"])
 class RecipesController(ControllerBase):
-    @http_get(
-        "/",
-        response=list[RecipeShortSchema],
-        auth=OptionalJWTAuth(),
-    )
-    def list_recipes(self, request):
+    @staticmethod
+    def get_queryset(request):
         qs = Recipe.objects.select_related("author").prefetch_related(
             "recipeingredient_set__ingredient",
             "recipeingredient_set__unit",
@@ -113,12 +109,19 @@ class RecipesController(ControllerBase):
             qs = qs.filter(Q(author=request.user) | Q(visibility="PUBLIC"))
         else:
             qs = qs.filter(visibility="PUBLIC")
-
         return qs.order_by("-updated_at")
 
-    @http_get("/{uuid:uid}", response=RecipeSchema)
+    @http_get(
+        "/",
+        response=list[RecipeShortSchema],
+        auth=OptionalJWTAuth(),
+    )
+    def list_recipes(self, request):
+        return self.get_queryset(request)
+
+    @http_get("/{uuid:uid}", response=RecipeSchema, auth=OptionalJWTAuth())
     def get_recipe(self, request, uid: uuid.UUID):
-        return get_object_or_404(Recipe, uid=uid)
+        return get_object_or_404(self.get_queryset(request), uid=uid)
 
     @http_post(
         "/",
