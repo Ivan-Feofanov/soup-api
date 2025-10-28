@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from ninja import ModelSchema
+from ninja import ModelSchema, Schema
 from pydantic import BaseModel
 
 
@@ -26,4 +26,13 @@ class UserUpdateSchema(BaseModel):
 class AuthResponseSchema(BaseModel):
     user: UserSchema
     access_token: str
+    refresh_token: str
+
+
+class TokenRefreshResponseSchema(Schema):
+    access_token: str
+    refresh_token: str
+
+
+class TokenRefreshSchema(Schema):
     refresh_token: str

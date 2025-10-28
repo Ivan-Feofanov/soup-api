@@ -1,21 +1,17 @@
-from ninja import Router, Schema
+from ninja import Router
 from django.http import HttpRequest, QueryDict
 from ninja_extra import status
 from social_django.utils import load_strategy, load_backend
 from ninja_jwt.tokens import RefreshToken
 from ninja_jwt.exceptions import TokenError, InvalidToken
 
-from users.api.schemes import SocialAuthSchema, UserSchema, AuthResponseSchema
-
-
-class TokenRefreshSchema(Schema):
-    refresh: str
-
-
-class TokenRefreshResponseSchema(Schema):
-    access: str
-    refresh: str
-
+from users.api.schemes import (
+    SocialAuthSchema,
+    UserSchema,
+    AuthResponseSchema,
+    TokenRefreshResponseSchema,
+    TokenRefreshSchema,
+)
 
 router = Router()
 
@@ -60,16 +56,6 @@ def social_login(request: HttpRequest, backend: str, data: SocialAuthSchema):
         }
 
 
-@router.post("/logout/", response={status.HTTP_200_OK: dict})
-def logout_view(request: HttpRequest):
-    """
-    Logout endpoint for JWT (client-side token removal).
-    With JWT, logout is handled client-side by removing the tokens.
-    This endpoint exists for API compatibility.
-    """
-    return status.HTTP_200_OK, {"success": True}
-
-
 @router.post(
     "/token/refresh/",
     response={
@@ -82,10 +68,10 @@ def refresh_token(request: HttpRequest, data: TokenRefreshSchema):
     Refresh an access token using a refresh token.
     """
     try:
-        refresh = RefreshToken(data.refresh)
+        refresh = RefreshToken(data.refresh_token)
         return status.HTTP_200_OK, {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
+            "access_token": str(refresh.access_token),
+            "refresh_token": str(refresh),
         }
     except (TokenError, InvalidToken) as e:
         return status.HTTP_400_BAD_REQUEST, {"error": str(e)}

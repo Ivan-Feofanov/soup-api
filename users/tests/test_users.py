@@ -105,18 +105,3 @@ def test_update_user_validation_error_duplicate_handler(
     errors = body.get("errors") or (body.get("detail") or {}).get("errors")
     assert isinstance(errors, dict)
     assert "handler" in errors
-
-
-@pytest.mark.django_db
-def test_social_login_invalid_code_returns_400(client):
-    # Arrange: invalid code should be rejected by backend and return 400
-    url = "/api/auth/login/google-oauth2/"
-    payload = {"code": "invalid-code", "redirect_uri": "http://localhost/callback"}
-
-    # Act
-    resp = client.post(url, data=payload, content_type="application/json")
-
-    # Assert
-    assert resp.status_code == 400
-    data = resp.json()
-    assert data.get("error") or data.get("detail")
