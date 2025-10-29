@@ -195,6 +195,49 @@ def test_create_recipe(faker, authenticated_client, ing_flour, unit_g, user):
 
 
 @pytest.mark.django_db
+def test_create_recipe_ingredient_without_quantity(
+    faker, authenticated_client, ing_flour, unit_g, user
+):
+    new_recipe_data = {
+        "title": faker.sentence(),
+        "description": faker.text(),
+        "image": faker.image_url(),
+        "notes": faker.text(),
+    }
+    url = "/api/kitchen/recipes/"
+    instr = {
+        "step": 1,
+        "description": faker.sentence(),
+        "timer": 10,
+    }
+    payload = {
+        "title": new_recipe_data["title"],
+        "description": new_recipe_data["description"],
+        "image": new_recipe_data["image"],
+        "notes": new_recipe_data["notes"],
+        "instructions": [instr],
+        "ingredients": [
+            {
+                "ingredient_uid": str(ing_flour.uid),
+            }
+        ],
+    }
+
+    response = authenticated_client.post(
+        url,
+        data=payload,
+        content_type="application/json",
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+    data = response.json()
+
+    assert len(data["ingredients"]) == 1
+    assert data["ingredients"][0]["ingredient"]["uid"] == str(ing_flour.uid)
+    assert data["ingredients"][0]["quantity"] is None
+    assert data["ingredients"][0]["unit"] is None
+
+
+@pytest.mark.django_db
 def test_update_recipe(faker, authenticated_client, recipe):
     # Try to update existing recipe as the author
     new_ing = Ingredient.objects.create(name="Milk")
