@@ -1,5 +1,6 @@
 import uuid
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from ninja_extra import (
     api_controller,
@@ -12,6 +13,8 @@ from ninja_extra.exceptions import APIException, PermissionDenied
 from ninja_jwt.authentication import JWTAuth
 
 from users.api.schemes import UserSchema, UserUpdateSchema
+
+user_model = get_user_model()
 
 
 class ValidationException(APIException):
@@ -30,6 +33,22 @@ class UserModelController(ControllerBase):
         user = request.user
         if user.uid != uid:
             raise PermissionDenied()
+        if payload.handler:
+            payload.handler = payload.handler.lower().strip()
+            if (
+                user_model.objects.filter(handler__iexact=payload.handler)
+                .exclude(uid=user.uid)
+                .exists()
+            ):
+                raise ValidationException(
+                    detail={
+                        "errors": {
+                            "handler": [
+                                "This handler is already taken by another chief."
+                            ]
+                        }
+                    }
+                )
         for field, value in payload.model_dump().items():
             if value is not None:
                 setattr(user, field, value)

@@ -81,15 +81,16 @@ def test_update_user_forbidden_when_other_uid(authenticated_client, user, other_
     )
 
 
+@pytest.mark.parametrize("handler", ["taken", "Taken", "TAKEN", "taken ", " taken"])
 @pytest.mark.django_db
 def test_update_user_validation_error_duplicate_handler(
-    authenticated_client, user, other_user
+    authenticated_client, user, other_user, handler
 ):
     # Arrange: make other_user handler taken, then try to set same handler for user
     other_user.handler = "taken"
     other_user.save()
     url = f"/api/users/{user.uid}"
-    payload = {"handler": "taken"}
+    payload = {"handler": handler}
 
     # Act
     resp = authenticated_client.patch(
@@ -105,3 +106,4 @@ def test_update_user_validation_error_duplicate_handler(
     errors = body.get("errors") or (body.get("detail") or {}).get("errors")
     assert isinstance(errors, dict)
     assert "handler" in errors
+    assert errors["handler"] == ["This handler is already taken by another chief."]
