@@ -150,17 +150,29 @@ def test_create_recipe(faker, authenticated_client, ing_flour, unit_g, user):
         "notes": faker.text(),
     }
     url = "/api/kitchen/recipes/"
-    instr = {
-        "step": 1,
-        "description": faker.sentence(),
-        "timer": 10,
-    }
+    instr = [
+        {
+            "step": 3,
+            "description": faker.sentence(),
+            "timer": 10,
+        },
+        {
+            "step": 1,
+            "description": faker.sentence(),
+            "timer": 20,
+        },
+        {
+            "step": 2,
+            "description": faker.sentence(),
+            "timer": 20,
+        },
+    ]
     payload = {
         "title": new_recipe_data["title"],
         "description": new_recipe_data["description"],
         "image": new_recipe_data["image"],
         "notes": new_recipe_data["notes"],
-        "instructions": [instr],
+        "instructions": instr,
         "ingredients": [
             {
                 "ingredient_uid": str(ing_flour.uid),
@@ -178,15 +190,22 @@ def test_create_recipe(faker, authenticated_client, ing_flour, unit_g, user):
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     new_recipe = Recipe.objects.get(title=new_recipe_data["title"])
+    sorted_instr = sorted(instr, key=lambda x: x["step"])
 
     assert data["title"] == new_recipe_data["title"]
     assert data["description"] == new_recipe_data["description"]
     assert data["image"] == new_recipe_data["image"]
     assert data["notes"] == new_recipe_data["notes"]
-    assert len(data["instructions"]) == 1
-    assert data["instructions"][0]["step"] == instr["step"]
-    assert data["instructions"][0]["description"] == instr["description"]
-    assert data["instructions"][0]["timer"] == instr["timer"]
+    assert len(data["instructions"]) == 3
+    assert data["instructions"][0]["step"] == sorted_instr[0]["step"]
+    assert data["instructions"][0]["description"] == sorted_instr[0]["description"]
+    assert data["instructions"][0]["timer"] == sorted_instr[0]["timer"]
+    assert data["instructions"][1]["step"] == sorted_instr[1]["step"]
+    assert data["instructions"][1]["description"] == sorted_instr[1]["description"]
+    assert data["instructions"][1]["timer"] == sorted_instr[1]["timer"]
+    assert data["instructions"][2]["step"] == sorted_instr[2]["step"]
+    assert data["instructions"][2]["description"] == sorted_instr[2]["description"]
+    assert data["instructions"][2]["timer"] == sorted_instr[2]["timer"]
     assert len(data["ingredients"]) == 1
     # DB side checks
     assert new_recipe.recipeingredient_set.count() == 1

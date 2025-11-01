@@ -13,6 +13,9 @@ class Unit(Common):
 
 
 class Instruction(Common):
+    class Meta:
+        ordering = ["step"]
+
     step = models.IntegerField()
     description = models.TextField()
     recipe = models.ForeignKey(
