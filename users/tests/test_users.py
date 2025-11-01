@@ -1,4 +1,5 @@
 import pytest
+from ninja_extra import status
 
 
 @pytest.mark.django_db
@@ -33,6 +34,9 @@ def test_me_returns_current_user(authenticated_client, user):
 @pytest.mark.django_db
 def test_update_user_self_success(authenticated_client, user):
     # Arrange
+    user.handler = None
+    user.username = None
+    user.save()
     url = f"/api/users/{user.uid}"
     payload = {
         "username": "Johnny",
@@ -107,3 +111,22 @@ def test_update_user_validation_error_duplicate_handler(
     assert isinstance(errors, dict)
     assert "handler" in errors
     assert errors["handler"] == ["This handler is already taken by another chief."]
+
+
+@pytest.mark.django_db
+def test_update_user_handler_already_set(authenticated_client, user):
+    # Arrange: try to set handler with invalid characters
+    url = f"/api/users/{user.uid}"
+    payload = {"handler": "any new handler"}
+
+    # Act
+    resp = authenticated_client.patch(
+        url,
+        data=payload,
+        content_type="application/json",
+    )
+
+    # Assert
+    assert resp.status_code == status.HTTP_200_OK
+    data = resp.json()
+    assert data["handler"] == user.handler
