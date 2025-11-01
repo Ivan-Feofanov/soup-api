@@ -101,7 +101,8 @@ class RecipeCreateSchema(Schema):
 class RecipesController(ControllerBase):
     @staticmethod
     def get_queryset(request):
-        qs = Recipe.objects.select_related("author", "instructions").prefetch_related(
+        qs = Recipe.objects.select_related("author").prefetch_related(
+            "instructions",
             "recipeingredient_set__ingredient",
             "recipeingredient_set__unit",
         )
