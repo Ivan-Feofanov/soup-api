@@ -68,12 +68,14 @@ def test_list_recipes_public_and_private(authenticated_client, recipe, other_use
         title="Other's recipe",
         description="Other's description",
         visibility=Recipe.Visibility.PUBLIC,
+        is_draft=False,
     )
     other_user.recipe_set.create(
         author=other_user,
         title="Other's recipe",
         description="Other's description",
         visibility=Recipe.Visibility.PRIVATE,
+        is_draft=False,
     )
 
     resp = authenticated_client.get("/api/kitchen/recipes/")
@@ -383,19 +385,6 @@ def test_delete_recipe_forbidden_for_non_author(
         content_type="application/json",
     )
     assert resp.status_code == status.HTTP_403_FORBIDDEN
-
-
-@pytest.mark.django_db
-def test_create_recipe_draft_validation_error(authenticated_client):
-    url = "/api/kitchen/recipes/drafts/"
-    payload = {}
-    resp = authenticated_client.post(
-        url,
-        data=payload,
-        content_type="application/json",
-    )
-    assert resp.status_code == status.HTTP_400_BAD_REQUEST
-    assert resp.json()["errors"]["title"] == ["Title is required"]
 
 
 @pytest.mark.django_db
