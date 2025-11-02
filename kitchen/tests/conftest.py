@@ -32,11 +32,20 @@ def instructions(faker):
 
 
 @pytest.fixture
+def draft(user):
+    return Recipe.objects.create(
+        author=user,
+        is_draft=True,
+    )
+
+
+@pytest.fixture
 def recipe(user, instructions, ing_flour, ing_water, unit_g, unit_ml):
     recipe = Recipe.objects.create(
         author=user,
         title="Bread",
         description="Simple bread",
+        is_draft=False,
     )
     recipe.instructions.set(instructions, bulk=False)
     RecipeIngredient.objects.create(

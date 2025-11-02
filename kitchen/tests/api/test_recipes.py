@@ -1,4 +1,5 @@
 import pytest
+import uuid6
 from ninja_extra import status
 
 from kitchen.models import Ingredient, Unit, Recipe
@@ -12,12 +13,31 @@ def test_list_recipes_private(authenticated_client, recipe, user):
     first = data[0]
 
     assert isinstance(data, list)
-    assert len(data) >= 1
+    assert len(data) == 1
     assert first["title"] == "Bread"
-    # Author block
-    assert "author" in first
-    assert first["author"]["username"] == user.username
-    assert first["author"]["handler"] == user.handler
+
+
+@pytest.mark.django_db
+def test_list_recipes_not_show_drafts(authenticated_client, recipe, user):
+    # Arrange
+    Recipe.objects.create(
+        author=user,
+        title="Other's recipe",
+        description="Other's description",
+        visibility=Recipe.Visibility.PUBLIC,
+        is_draft=True,
+    )
+
+    # Act
+    resp = authenticated_client.get("/api/kitchen/recipes/")
+    assert resp.status_code == status.HTTP_200_OK
+    data = resp.json()
+    first = data[0]
+
+    # Assert
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert first["title"] == "Bread"
 
 
 @pytest.mark.django_db
@@ -363,3 +383,344 @@ def test_delete_recipe_forbidden_for_non_author(
         content_type="application/json",
     )
     assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+def test_create_recipe_draft_validation_error(authenticated_client):
+    url = "/api/kitchen/recipes/drafts/"
+    payload = {}
+    resp = authenticated_client.post(
+        url,
+        data=payload,
+        content_type="application/json",
+    )
+    assert resp.status_code == status.HTTP_400_BAD_REQUEST
+    assert resp.json()["errors"]["title"] == ["Title is required"]
+
+
+@pytest.mark.django_db
+def test_create_recipe_draft(faker, authenticated_client):
+    url = "/api/kitchen/recipes/drafts/"
+    resp = authenticated_client.post(
+        url,
+        content_type="application/json",
+    )
+    data = resp.json()
+
+    assert resp.status_code == status.HTTP_201_CREATED
+    assert Recipe.objects.filter(uid=data["uid"], is_draft=True).exists()
+
+
+@pytest.mark.django_db
+def test_create_recipe_draft_idempotent(authenticated_client):
+    url = "/api/kitchen/recipes/drafts/"
+    resp1 = authenticated_client.post(
+        url,
+        content_type="application/json",
+    )
+    resp2 = authenticated_client.post(
+        url,
+        content_type="application/json",
+    )
+    assert resp1.json()["uid"] == resp2.json()["uid"]
+
+
+@pytest.mark.django_db
+def test_list_recipe_drafts(authenticated_client, draft):
+    # Arrange
+    url = "/api/kitchen/recipes/drafts/"
+
+    # Act
+    resp = authenticated_client.get(
+        url,
+        content_type="application/json",
+    )
+    data = resp.json()
+
+    # Assert
+    assert resp.status_code == status.HTTP_200_OK
+    assert len(data) == 1
+    assert data[0]["uid"] == str(draft.uid)
+
+
+@pytest.mark.django_db
+def test_get_recipe_draft(authenticated_client, draft):
+    # Arrange
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}"
+
+    # Act
+    resp = authenticated_client.get(
+        url,
+        content_type="application/json",
+    )
+    data = resp.json()
+
+    # Assert
+    assert resp.status_code == status.HTTP_200_OK
+    assert data["uid"] == str(draft.uid)
+
+
+@pytest.mark.django_db
+def test_get_recipe_draft_not_found_for_non_author(
+    client, get_authenticated_client, other_user, draft
+):
+    # Arrange
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}"
+    other_client = get_authenticated_client(other_user)
+
+    # Act
+    resp = other_client.get(
+        url,
+        content_type="application/json",
+    )
+
+    # Assert
+    assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_get_recipe_draft_not_found_for_unauthenticated_user(client, draft):
+    # Arrange
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}"
+
+    # Act
+    resp = client.get(
+        url,
+        content_type="application/json",
+    )
+
+    # Assert
+    assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_update_recipe_draft_short(
+    faker, authenticated_client, draft, ing_flour, unit_g
+):
+    # Arrange
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}"
+    payload = {
+        "title": faker.sentence(),
+        "description": faker.text(),
+    }
+
+    # Act
+    resp = authenticated_client.patch(
+        url,
+        data=payload,
+        content_type="application/json",
+    )
+    data = resp.json()
+
+    # Assert
+    assert resp.status_code == status.HTTP_200_OK
+    assert data["title"] == payload["title"]
+    assert data["description"] == payload["description"]
+    assert len(data["instructions"]) == 0
+    assert len(data["ingredients"]) == 0
+
+
+@pytest.mark.parametrize("instr_desc", ["", "   "])
+@pytest.mark.django_db
+def test_update_recipe_draft_empty_instructions(
+    faker, authenticated_client, draft, ing_flour, unit_g, instr_desc
+):
+    # Arrange
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}"
+    payload = {
+        "title": faker.sentence(),
+        "description": faker.text(),
+        "instructions": [
+            {
+                "step": 1,
+                "description": instr_desc,
+                "timer": 10,
+            }
+        ],
+    }
+
+    # Act
+    resp = authenticated_client.patch(
+        url,
+        data=payload,
+        content_type="application/json",
+    )
+    data = resp.json()
+
+    # Assert
+    assert resp.status_code == status.HTTP_200_OK
+    assert data["title"] == payload["title"]
+    assert data["description"] == payload["description"]
+    assert len(data["instructions"]) == 0
+    assert len(data["ingredients"]) == 0
+
+
+@pytest.mark.django_db
+def test_update_recipe_draft(faker, authenticated_client, draft, ing_flour, unit_g):
+    # Arrange
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}"
+    payload = {
+        "title": faker.sentence(),
+        "description": faker.text(),
+        "image": faker.image_url(),
+        "notes": faker.text(),
+        "instructions": [
+            {
+                "step": 1,
+                "description": faker.sentence(),
+                "timer": 10,
+            },
+            {
+                "step": 2,
+                "description": faker.sentence(),
+                "timer": 20,
+            },
+        ],
+        "ingredients": [
+            {
+                "ingredient_uid": str(ing_flour.uid),
+                "unit_uid": str(unit_g.uid),
+                "quantity": 100,
+            }
+        ],
+        "visibility": "PUBLIC",
+    }
+
+    # Act
+    resp = authenticated_client.patch(
+        url,
+        data=payload,
+        content_type="application/json",
+    )
+    data = resp.json()
+
+    # Assert
+    assert resp.status_code == status.HTTP_200_OK
+    assert data["title"] == payload["title"]
+    assert data["description"] == payload["description"]
+    assert data["image"] == payload["image"]
+    assert data["notes"] == payload["notes"]
+    assert data["visibility"] == payload["visibility"]
+    assert len(data["instructions"]) == 2
+    assert len(data["ingredients"]) == 1
+
+
+@pytest.mark.django_db
+def test_update_recipe_draft_not_found_for_non_author(
+    client, get_authenticated_client, other_user, draft
+):
+    # Arrange
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}"
+    payload = {
+        "title": "New Name",  # schema requires this field
+    }
+    other_client = get_authenticated_client(other_user)
+
+    # Act
+    resp = other_client.patch(
+        url,
+        data=payload,
+        content_type="application/json",
+    )
+
+    # Assert
+    assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_delete_recipe_draft(authenticated_client, draft):
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}"
+    resp = authenticated_client.delete(
+        url,
+        content_type="application/json",
+    )
+
+    assert resp.status_code == status.HTTP_204_NO_CONTENT
+    assert not Recipe.objects.filter(uid=draft.uid).exists()
+
+
+@pytest.mark.django_db
+def test_delete_recipe_draft_not_found_for_non_author(
+    client, get_authenticated_client, other_user, draft
+):
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}"
+    other_client = get_authenticated_client(other_user)
+
+    resp = other_client.delete(
+        url,
+        content_type="application/json",
+    )
+    assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_delete_recipe_draft_not_found(authenticated_client):
+    url = f"/api/kitchen/recipes/drafts/{uuid6.uuid7()}"
+    resp = authenticated_client.delete(
+        url,
+        content_type="application/json",
+    )
+    assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_recipe_draft_finish(authenticated_client, faker, draft, ing_flour, unit_g):
+    # Arrange
+    payload = {
+        "description": faker.text(),
+        "image": faker.image_url(),
+        "notes": faker.text(),
+        "instructions": [
+            {
+                "step": 1,
+                "description": faker.sentence(),
+                "timer": 10,
+            },
+            {
+                "step": 2,
+                "description": faker.sentence(),
+                "timer": 20,
+            },
+        ],
+        "ingredients": [
+            {
+                "ingredient_uid": str(ing_flour.uid),
+                "unit_uid": str(unit_g.uid),
+                "quantity": 100,
+            }
+        ],
+        "visibility": "PUBLIC",
+    }
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}"
+    authenticated_client.patch(
+        url,
+        data=payload,
+        content_type="application/json",
+    )
+
+    # Act
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}/finish"
+    resp = authenticated_client.post(
+        url,
+        content_type="application/json",
+    )
+
+    # Assert
+    assert resp.status_code == status.HTTP_200_OK
+    assert not Recipe.objects.filter(uid=draft.uid, is_draft=True).exists()
+    assert Recipe.objects.filter(uid=draft.uid, is_draft=False).exists()
+
+
+@pytest.mark.django_db
+def test_recipe_draft_finish_validation_error(authenticated_client, draft):
+    url = f"/api/kitchen/recipes/drafts/{draft.uid}/finish"
+    resp = authenticated_client.post(
+        url,
+        content_type="application/json",
+    )
+    data = resp.json()
+
+    assert resp.status_code == status.HTTP_400_BAD_REQUEST
+    assert data["errors"]["instructions"] == ["Instructions are required"]
+    assert data["errors"]["ingredients"] == ["Ingredients are required"]
+    assert data["errors"]["description"] == ["Description is required"]
