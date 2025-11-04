@@ -14,12 +14,14 @@ def slugify_titles(apps, schema_editor):
     )
 
     recipes = []
+    slugs = set()
     for recipe in recipes_to_update:
         slug = slugify(recipe.title)
 
-        while Recipe.objects.using(db_alias).filter(slug=slug).exists():
+        while slug in slugs:
             slug = f"{slugify(recipe.title)}-{generate(size=4)}"
 
+        slugs.add(slug)
         recipe.slug = slug
         recipes.append(recipe)
 
