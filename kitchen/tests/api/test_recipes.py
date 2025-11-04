@@ -14,7 +14,12 @@ def test_list_recipes_private(authenticated_client, recipe, user):
 
     assert isinstance(data, list)
     assert len(data) == 1
-    assert first["title"] == "Bread"
+    assert first["title"] == recipe.title
+    assert first["slug"] == recipe.slug
+    assert first["uid"] == str(recipe.uid)
+    assert first["author"]["username"] == user.username
+    assert first["author"]["handler"] == user.handler
+    assert first["image"] == recipe.image
 
 
 @pytest.mark.django_db
@@ -37,7 +42,7 @@ def test_list_recipes_not_show_drafts(authenticated_client, recipe, user):
     # Assert
     assert isinstance(data, list)
     assert len(data) == 1
-    assert first["title"] == "Bread"
+    assert first["title"] == recipe.title
 
 
 @pytest.mark.django_db
@@ -84,6 +89,7 @@ def test_list_recipes_public_and_private(authenticated_client, recipe, other_use
 
     assert len(data) == 2
     assert {x["uid"] for x in data} == {str(recipe.uid), str(public_recipe.uid)}
+    assert {x["slug"] for x in data} == {recipe.slug, public_recipe.slug}
 
 
 @pytest.mark.django_db
@@ -127,6 +133,19 @@ def test_get_recipe(
     assert "author" in data
     assert data["author"]["username"] == user.username
     assert data["author"]["handler"] == user.handler
+
+
+@pytest.mark.django_db
+def test_get_recipe_by_slug(
+    authenticated_client, recipe, user, ing_flour, ing_water, unit_g, unit_ml
+):
+    resp = authenticated_client.get(f"/api/kitchen/recipes/{recipe.slug}")
+    assert resp.status_code == status.HTTP_200_OK
+    data = resp.json()
+    db_recipe = Recipe.objects.get(uid=recipe.uid)
+
+    assert data["uid"] == str(db_recipe.uid)
+    assert data["slug"] == db_recipe.slug
 
 
 @pytest.mark.django_db

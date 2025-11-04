@@ -51,6 +51,10 @@ class RecipesController(ControllerBase):
     def get_recipe(self, request, uid: uuid.UUID):
         return get_object_or_404(self.get_queryset(request), uid=uid)
 
+    @http_get("/{slug:slug}", response=RecipeSchema, auth=OptionalJWTAuth())
+    def get_recipe_by_slug(self, request, slug: str):
+        return get_object_or_404(self.get_queryset(request), slug=slug)
+
     @http_post(
         "/",
         response={

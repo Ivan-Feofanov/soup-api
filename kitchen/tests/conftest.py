@@ -40,11 +40,11 @@ def draft(user):
 
 
 @pytest.fixture
-def recipe(user, instructions, ing_flour, ing_water, unit_g, unit_ml):
+def recipe(faker, user, instructions, ing_flour, ing_water, unit_g, unit_ml):
     recipe = Recipe.objects.create(
         author=user,
-        title="Bread",
-        description="Simple bread",
+        title=faker.sentence(),
+        description=faker.text(),
         is_draft=False,
     )
     recipe.instructions.set(instructions, bulk=False)

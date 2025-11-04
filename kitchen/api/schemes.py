@@ -48,6 +48,7 @@ class RecipeShortSchema(ModelSchema):
         model = Recipe
         fields = [
             "uid",
+            "slug",
             "title",
             "description",
             "image",
