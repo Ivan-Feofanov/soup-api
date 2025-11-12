@@ -46,7 +46,7 @@ def test_list_recipes_not_show_drafts(authenticated_client, recipe, user):
 
 
 @pytest.mark.django_db
-def test_list_recipes_unauthenticated(client, recipe, user):
+def test_list_recipes_unauthenticated(client):
     resp = client.get("/api/kitchen/recipes/")
     assert resp.status_code == status.HTTP_200_OK
 
@@ -54,7 +54,7 @@ def test_list_recipes_unauthenticated(client, recipe, user):
 
 
 @pytest.mark.django_db
-def test_list_recipes_unauthenticated_public(client, recipe, user):
+def test_list_recipes_unauthenticated_public(client, recipe):
     recipe.visibility = "PUBLIC"
     recipe.save()
 
@@ -93,9 +93,7 @@ def test_list_recipes_public_and_private(authenticated_client, recipe, other_use
 
 
 @pytest.mark.django_db
-def test_get_recipe(
-    authenticated_client, recipe, user, ing_flour, ing_water, unit_g, unit_ml
-):
+def test_get_recipe(authenticated_client, recipe, user):
     resp = authenticated_client.get(f"/api/kitchen/recipes/{recipe.uid}")
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
@@ -116,19 +114,32 @@ def test_get_recipe(
     assert data["notes"] == db_recipe.notes
     assert data["image"] == db_recipe.image
     # Ingredients resolved with unit abbreviation and quantity
-    assert len(data["ingredients"]) == 2
-    assert data["ingredients"][0]["quantity"] == 500
-    assert data["ingredients"][0]["ingredient"]["uid"] == str(ing_flour.uid)
-    assert data["ingredients"][0]["ingredient"]["name"] == "Flour"
-    assert data["ingredients"][0]["unit"]["uid"] == str(unit_g.uid)
-    assert data["ingredients"][0]["unit"]["abbreviation"] == "g"
-    assert data["ingredients"][0]["unit"]["name"] == "Gram"
-    assert data["ingredients"][1]["quantity"] == 300
-    assert data["ingredients"][1]["ingredient"]["uid"] == str(ing_water.uid)
-    assert data["ingredients"][1]["ingredient"]["name"] == "Water"
-    assert data["ingredients"][1]["unit"]["uid"] == str(unit_ml.uid)
-    assert data["ingredients"][1]["unit"]["abbreviation"] == "ml"
-    assert data["ingredients"][1]["unit"]["name"] == "Milliliter"
+    assert len(data["ingredients"]) == recipe.recipeingredient_set.count()
+    assert (
+        data["ingredients"][0]["quantity"]
+        == recipe.recipeingredient_set.first().quantity
+    )
+    assert data["ingredients"][0]["ingredient"]["uid"] == str(
+        recipe.recipeingredient_set.first().ingredient.uid
+    )
+    assert (
+        data["ingredients"][0]["ingredient"]["name"]
+        == recipe.recipeingredient_set.first().ingredient.name
+    )
+    assert data["ingredients"][0]["unit"]["uid"] == str(
+        recipe.recipeingredient_set.first().unit.uid
+    )
+    assert (
+        data["ingredients"][0]["unit"]["abbreviation"]
+        == recipe.recipeingredient_set.first().unit.abbreviation
+    )
+    assert (
+        data["ingredients"][0]["unit"]["name"]
+        == recipe.recipeingredient_set.first().unit.name
+    )
+    assert data["ingredients"][0]["notes"] == recipe.recipeingredient_set.first().notes
+    assert data["visibility"] == recipe.visibility
+    assert data["is_draft"] == recipe.is_draft
     # Author block
     assert "author" in data
     assert data["author"]["username"] == user.username
@@ -136,9 +147,7 @@ def test_get_recipe(
 
 
 @pytest.mark.django_db
-def test_get_recipe_by_slug(
-    authenticated_client, recipe, user, ing_flour, ing_water, unit_g, unit_ml
-):
+def test_get_recipe_by_slug(authenticated_client, recipe):
     resp = authenticated_client.get(f"/api/kitchen/recipes/{recipe.slug}")
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
@@ -149,7 +158,7 @@ def test_get_recipe_by_slug(
 
 
 @pytest.mark.django_db
-def test_get_public_recipe(client, recipe, user, ing_flour, ing_water, unit_g, unit_ml):
+def test_get_public_recipe(client, recipe):
     recipe.visibility = "PUBLIC"
     recipe.save()
 
@@ -161,7 +170,7 @@ def test_get_public_recipe(client, recipe, user, ing_flour, ing_water, unit_g, u
 
 
 @pytest.mark.django_db
-def test_create_recipe_non_auth(client, ing_flour):
+def test_create_recipe_non_auth(client, ingredient):
     url = "/api/kitchen/recipes/"
     payload = {
         "title": "Pancakes",
@@ -171,7 +180,7 @@ def test_create_recipe_non_auth(client, ing_flour):
         "instructions": ["Mix", "Fry"],
         "ingredients": [
             {
-                "ingredient_uid": str(ing_flour.uid),
+                "ingredient_uid": str(ingredient.uid),
             }
         ],
     }
@@ -183,7 +192,7 @@ def test_create_recipe_non_auth(client, ing_flour):
 
 
 @pytest.mark.django_db
-def test_create_recipe(faker, authenticated_client, ing_flour, unit_g, user):
+def test_create_recipe(faker, authenticated_client, ingredient, unit):
     new_recipe_data = {
         "title": faker.sentence(),
         "description": faker.text(),
@@ -216,8 +225,8 @@ def test_create_recipe(faker, authenticated_client, ing_flour, unit_g, user):
         "instructions": instr,
         "ingredients": [
             {
-                "ingredient_uid": str(ing_flour.uid),
-                "unit_uid": str(unit_g.uid),
+                "ingredient_uid": str(ingredient.uid),
+                "unit_uid": str(unit.uid),
                 "quantity": 100,
             }
         ],
@@ -250,13 +259,16 @@ def test_create_recipe(faker, authenticated_client, ing_flour, unit_g, user):
     assert len(data["ingredients"]) == 1
     # DB side checks
     assert new_recipe.recipeingredient_set.count() == 1
-    assert new_recipe.recipeingredient_set.first().ingredient == ing_flour
-    assert new_recipe.recipeingredient_set.first().unit == unit_g
+    assert new_recipe.recipeingredient_set.first().ingredient == ingredient
+    assert new_recipe.recipeingredient_set.first().unit == unit
 
 
 @pytest.mark.django_db
 def test_create_recipe_ingredient_without_quantity(
-    faker, authenticated_client, ing_flour, unit_g, user
+    faker,
+    authenticated_client,
+    ingredient,
+    unit,
 ):
     new_recipe_data = {
         "title": faker.sentence(),
@@ -278,7 +290,7 @@ def test_create_recipe_ingredient_without_quantity(
         "instructions": [instr],
         "ingredients": [
             {
-                "ingredient_uid": str(ing_flour.uid),
+                "ingredient_uid": str(ingredient.uid),
             }
         ],
     }
@@ -292,7 +304,7 @@ def test_create_recipe_ingredient_without_quantity(
     data = response.json()
 
     assert len(data["ingredients"]) == 1
-    assert data["ingredients"][0]["ingredient"]["uid"] == str(ing_flour.uid)
+    assert data["ingredients"][0]["ingredient"]["uid"] == str(ingredient.uid)
     assert data["ingredients"][0]["quantity"] is None
     assert data["ingredients"][0]["unit"] is None
 
@@ -407,7 +419,7 @@ def test_delete_recipe_forbidden_for_non_author(
 
 
 @pytest.mark.django_db
-def test_create_recipe_draft(faker, authenticated_client):
+def test_create_recipe_draft(authenticated_client):
     url = "/api/kitchen/recipes/drafts/"
     resp = authenticated_client.post(
         url,
@@ -502,9 +514,7 @@ def test_get_recipe_draft_not_found_for_unauthenticated_user(client, draft):
 
 
 @pytest.mark.django_db
-def test_update_recipe_draft_short(
-    faker, authenticated_client, draft, ing_flour, unit_g
-):
+def test_update_recipe_draft_short(faker, authenticated_client, draft):
     # Arrange
     url = f"/api/kitchen/recipes/drafts/{draft.uid}"
     payload = {
@@ -531,7 +541,7 @@ def test_update_recipe_draft_short(
 @pytest.mark.parametrize("instr_desc", ["", "   "])
 @pytest.mark.django_db
 def test_update_recipe_draft_empty_instructions(
-    faker, authenticated_client, draft, ing_flour, unit_g, instr_desc
+    faker, authenticated_client, draft, instr_desc
 ):
     # Arrange
     url = f"/api/kitchen/recipes/drafts/{draft.uid}"
@@ -564,7 +574,7 @@ def test_update_recipe_draft_empty_instructions(
 
 
 @pytest.mark.django_db
-def test_update_recipe_draft(faker, authenticated_client, draft, ing_flour, unit_g):
+def test_update_recipe_draft(faker, authenticated_client, draft, ingredient, unit):
     # Arrange
     url = f"/api/kitchen/recipes/drafts/{draft.uid}"
     payload = {
@@ -586,8 +596,8 @@ def test_update_recipe_draft(faker, authenticated_client, draft, ing_flour, unit
         ],
         "ingredients": [
             {
-                "ingredient_uid": str(ing_flour.uid),
-                "unit_uid": str(unit_g.uid),
+                "ingredient_uid": str(ingredient.uid),
+                "unit_uid": str(unit.uid),
                 "quantity": 100,
             }
         ],
@@ -672,7 +682,7 @@ def test_delete_recipe_draft_not_found(authenticated_client):
 
 
 @pytest.mark.django_db
-def test_recipe_draft_finish(authenticated_client, faker, draft, ing_flour, unit_g):
+def test_recipe_draft_finish(authenticated_client, faker, draft, ingredient, unit):
     # Arrange
     payload = {
         "description": faker.text(),
@@ -692,8 +702,8 @@ def test_recipe_draft_finish(authenticated_client, faker, draft, ing_flour, unit
         ],
         "ingredients": [
             {
-                "ingredient_uid": str(ing_flour.uid),
-                "unit_uid": str(unit_g.uid),
+                "ingredient_uid": str(ingredient.uid),
+                "unit_uid": str(unit.uid),
                 "quantity": 100,
             }
         ],

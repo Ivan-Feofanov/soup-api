@@ -85,3 +85,27 @@ class RecipeIngredient(Common):
 
     def __str__(self):
         return f"{self.recipe} - {self.ingredient}"
+
+
+class Manufacturer(Common):
+    name = models.CharField(max_length=255, db_index=True, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class ApplianceType(Common):
+    name = models.CharField(max_length=255, db_index=True, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Appliance(Common):
+    model = models.CharField(max_length=255, db_index=True, unique=True)
+
+    manufacturer = models.ForeignKey(Manufacturer, on_delete=models.CASCADE)
+    type = models.ForeignKey(ApplianceType, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.model

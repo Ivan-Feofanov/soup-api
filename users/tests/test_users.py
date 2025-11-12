@@ -50,10 +50,10 @@ def test_update_user_self_success(authenticated_client, user):
         data=payload,
         content_type="application/json",
     )
+    data = resp.json()
 
     # Assert
-    assert resp.status_code == 200
-    data = resp.json()
+    assert resp.status_code == status.HTTP_200_OK
     assert data["username"] == payload["username"]
     assert data["handler"] == payload["handler"]
     assert data["avatar"] == payload["avatar"]

@@ -5,13 +5,14 @@ from kitchen.models import Ingredient
 
 
 @pytest.mark.django_db
-def test_list_ingredients(client, ing_flour, ing_water):
+def test_list_ingredients(client, ingredient_factory):
+    ings = ingredient_factory.create_batch(5)
     resp = client.get("/api/kitchen/ingredients/")
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
     names = sorted(d["name"] for d in data)
 
-    assert {"Flour", "Water"}.issubset(set(names))
+    assert {ing.name for ing in ings} == set(names)
 
 
 @pytest.mark.django_db

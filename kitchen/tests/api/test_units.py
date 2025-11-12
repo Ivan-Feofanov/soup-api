@@ -5,14 +5,14 @@ from kitchen.models import Unit
 
 
 @pytest.mark.django_db
-def test_list_units(client, unit_g, unit_ml):
+def test_list_units(client, unit_factory):
+    units = unit_factory.create_batch(5)
     resp = client.get("/api/kitchen/units/")
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
     abbrevs = [d["abbreviation"] for d in data]
 
-    assert "g" in abbrevs
-    assert "ml" in abbrevs
+    assert {unit.abbreviation for unit in units} == set(abbrevs)
 
 
 @pytest.mark.django_db
@@ -31,9 +31,9 @@ def test_create_unit(authenticated_client):
 
 
 @pytest.mark.django_db
-def test_create_unit_idempotent_by_abbreviation(authenticated_client, unit_g):
+def test_create_unit_idempotent_by_abbreviation(authenticated_client, unit):
     url = "/api/kitchen/units/"
-    payload = {"name": "Sugar", "abbreviation": "g"}
+    payload = {"name": "Sugar", "abbreviation": unit.abbreviation}
     resp = authenticated_client.post(
         url,
         data=payload,
@@ -43,13 +43,14 @@ def test_create_unit_idempotent_by_abbreviation(authenticated_client, unit_g):
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
 
-    assert data["abbreviation"] == "g"
-    assert Unit.objects.filter(abbreviation="g").count() == 1
+    assert data["abbreviation"] == unit.abbreviation
+    assert Unit.objects.filter(abbreviation=unit.abbreviation).count() == 1
 
 
 @pytest.mark.parametrize("name", ["gram", "Gram", "gram ", " gram"])
 @pytest.mark.django_db
-def test_create_unit_idempotent_by_name(authenticated_client, unit_g, name: str):
+def test_create_unit_idempotent_by_name(authenticated_client, unit_factory, name: str):
+    unit_g = unit_factory(name="gram")
     url = "/api/kitchen/units/"
     payload = {"name": name, "abbreviation": "sg"}
     resp = authenticated_client.post(

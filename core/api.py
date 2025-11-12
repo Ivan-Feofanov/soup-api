@@ -1,5 +1,6 @@
 from ninja_extra import NinjaExtraAPI
 
+from kitchen.api.appliances.api import AppliancesController
 from kitchen.api.ingredients import IngredientsController
 from kitchen.api.recipes import RecipesController
 from kitchen.api.drafts import RecipeDraftsController
@@ -14,5 +15,6 @@ api.register_controllers(RecipesController)
 api.register_controllers(RecipeDraftsController)
 api.register_controllers(IngredientsController)
 api.register_controllers(UnitsController)
+api.register_controllers(AppliancesController)
 
 api.add_router("/auth", auth_router)
