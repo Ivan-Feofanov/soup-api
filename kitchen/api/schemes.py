@@ -72,6 +72,7 @@ class RecipeSchema(UIDSchema, ModelSchema):
             "visibility",
             "author",
             "updated_at",
+            "is_draft",
         ]
 
     ingredients: list[IngredientInRecipeSchema] = []
