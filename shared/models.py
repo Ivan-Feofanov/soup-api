@@ -1,12 +1,16 @@
-import uuid6
 from django.db import models
+
+
+class UUIDv7(models.Func):
+    function = "uuidv7"
+    output_field = models.UUIDField()
 
 
 class UIDed(models.Model):
     class Meta:
         abstract = True
 
-    uid = models.UUIDField(primary_key=True, default=uuid6.uuid7, editable=False)
+    uid = models.UUIDField(primary_key=True, db_default=UUIDv7(), editable=False)
 
 
 class Dated(models.Model):

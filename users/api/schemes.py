@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from ninja import ModelSchema, Schema
 from pydantic import BaseModel
 
+from shared.schemes import UIDSchema
 
 UserModel = get_user_model()
 
@@ -11,10 +12,10 @@ class SocialAuthSchema(BaseModel):
     redirect_uri: str
 
 
-class UserSchema(ModelSchema):
+class UserSchema(UIDSchema, ModelSchema):
     class Meta:
         model = UserModel
-        fields = ["uid", "email", "handler", "username", "avatar"]
+        fields = ["email", "handler", "username", "avatar"]
 
 
 class UserUpdateSchema(BaseModel):

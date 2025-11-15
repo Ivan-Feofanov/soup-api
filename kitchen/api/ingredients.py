@@ -3,12 +3,13 @@ from ninja_extra import api_controller, http_get, ControllerBase, http_post, sta
 from ninja_jwt.authentication import JWTAuth
 
 from kitchen.models import Ingredient
+from shared.schemes import UIDSchema
 
 
-class IngredientSchema(ModelSchema):
+class IngredientSchema(UIDSchema, ModelSchema):
     class Meta:
         model = Ingredient
-        fields = ["uid", "name"]
+        fields = ["name"]
 
 
 class IngredientCreateSchema(Schema):

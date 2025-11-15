@@ -6,13 +6,14 @@ from kitchen.api.ingredients import IngredientSchema
 from kitchen.api.units import UnitSchema
 
 from kitchen.models import Instruction, RecipeIngredient, Recipe
+from shared.schemes import UIDSchema
 from users.models import CustomUser
 
 
-class InstructionSchema(ModelSchema):
+class InstructionSchema(UIDSchema, ModelSchema):
     class Meta:
         model = Instruction
-        fields = ["uid", "step", "description", "timer"]
+        fields = ["step", "description", "timer"]
 
 
 class InstructionCreateSchema(ModelSchema):
@@ -28,26 +29,25 @@ class IngredientInRecipeCreateSchema(Schema):
     notes: str | None = None
 
 
-class IngredientInRecipeSchema(ModelSchema):
+class IngredientInRecipeSchema(UIDSchema, ModelSchema):
     ingredient: IngredientSchema
     unit: UnitSchema | None = None
 
     class Meta:
         model = RecipeIngredient
-        fields = ["uid", "ingredient", "unit", "quantity", "notes"]
+        fields = ["ingredient", "unit", "quantity", "notes"]
 
 
-class AuthorSchema(ModelSchema):
+class AuthorSchema(UIDSchema, ModelSchema):
     class Meta:
         model = CustomUser
-        fields = ["uid", "username", "handler"]
+        fields = ["username", "handler"]
 
 
-class RecipeShortSchema(ModelSchema):
+class RecipeShortSchema(UIDSchema, ModelSchema):
     class Meta:
         model = Recipe
         fields = [
-            "uid",
             "slug",
             "title",
             "description",
@@ -60,10 +60,19 @@ class RecipeShortSchema(ModelSchema):
     author: AuthorSchema | None = None
 
 
-class RecipeSchema(ModelSchema):
+class RecipeSchema(UIDSchema, ModelSchema):
     class Meta:
         model = Recipe
-        fields = "__all__"
+        fields = [
+            "slug",
+            "title",
+            "description",
+            "image",
+            "notes",
+            "visibility",
+            "author",
+            "updated_at",
+        ]
 
     ingredients: list[IngredientInRecipeSchema] = []
     instructions: list[InstructionSchema] = []
