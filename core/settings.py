@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
@@ -191,31 +192,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# LOGGING = {
-#     "version": 1,
-#     "filters": {
-#         "require_debug_true": {
-#             "()": "django.utils.log.RequireDebugTrue",
-#         }
-#     },
-#     "handlers": {
-#         "console": {
-#             "level": "DEBUG",
-#             "filters": ["require_debug_true"],
-#             "class": "logging.StreamHandler",
-#         }
-#     },
-#     "loggers": {
-#         "django.db.backends": {
-#             "level": "DEBUG",
-#             "handlers": ["console"],
-#         }
-#     },
-# }
-
 # JWT Settings
-from datetime import timedelta
-
 NINJA_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),

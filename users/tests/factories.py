@@ -7,7 +7,7 @@ from users.models import CustomUser
 class CustomUserFactory(DjangoModelFactory):
     class Meta:
         model = CustomUser
-        django_get_or_create = ["email"]
+        django_get_or_create = ["email", "handler"]
 
     email = factory.Faker("email")
     username = factory.Faker("name")

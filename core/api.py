@@ -19,6 +19,9 @@ def staff_or_secret_required(view_func):
         expected_token = settings.OPENAPI_GENERATOR_TOKEN
         incoming_token = request.headers.get("X-Ninja-Token")
 
+        if settings.DEBUG:
+            return view_func(request, *args, **kwargs)
+
         # Check token for generator
         if expected_token and incoming_token == expected_token:
             return view_func(request, *args, **kwargs)

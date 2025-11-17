@@ -70,3 +70,15 @@ def test_api_docs_forbidden_for_anonymous(client):
 
     # Assert
     assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+def test_api_docs_allow_for_debug(client):
+    # Arrange
+    settings.DEBUG = True
+
+    # Act
+    resp = client.get("/api/openapi.json")
+
+    # Assert
+    assert resp.status_code == status.HTTP_200_OK
