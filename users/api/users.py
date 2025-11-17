@@ -49,21 +49,8 @@ class UserModelController(ControllerBase):
                         }
                     }
                 )
-        payload_dict = payload.model_dump()
-        # User handler is a writing once field
-        if user.handler is not None:
-            del payload_dict["handler"]
-
-        for field, value in payload_dict.items():
-            if value is not None:
-                setattr(user, field, value)
-        try:
-            user.full_clean()
-        except ValidationError as e:
-            error_details = {
-                "message": "Validation error occurred",
-                "errors": e.message_dict,
-            }
-            raise ValidationException(detail=error_details)
+        user.username = payload.username
+        user.handler = user.handler or payload.handler
+        user.avatar = payload.avatar
         user.save()
         return user

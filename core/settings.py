@@ -234,3 +234,5 @@ NINJA_JWT = {
     "AUTH_TOKEN_CLASSES": ("ninja_jwt.tokens.AccessToken",),
     "TOKEN_TYPE_CLAIM": "token_type",
 }
+
+OPENAPI_GENERATOR_TOKEN = os.environ.get("OPENAPI_GENERATOR_TOKEN", None)

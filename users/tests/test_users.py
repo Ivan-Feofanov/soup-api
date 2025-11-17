@@ -130,3 +130,28 @@ def test_update_user_handler_already_set(authenticated_client, user):
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
     assert data["handler"] == user.handler
+
+
+@pytest.mark.django_db
+def test_update_user_only_username(authenticated_client, user):
+    # Arrange
+    user.handler = None
+    user.username = None
+    user.avatar = None
+    user.save()
+    url = f"/api/users/{user.uid}"
+    payload = {"username": "new username"}
+
+    # Act
+    resp = authenticated_client.patch(
+        url,
+        data=payload,
+        content_type="application/json",
+    )
+
+    # Assert
+    assert resp.status_code == status.HTTP_200_OK
+    data = resp.json()
+    assert data["username"] == payload["username"]
+    assert data["handler"] is None
+    assert data["avatar"] is None
