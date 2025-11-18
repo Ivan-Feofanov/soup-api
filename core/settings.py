@@ -35,21 +35,16 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
+BE_HOSTNAME = os.environ.get("BE_HOSTNAME", "localhost")
+FE_HOSTNAME = os.environ.get("FE_HOSTNAME", "localhost")
+
 # CORS
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "soup.feofanov.dev", "soup-api.feofanov.dev"]
+ALLOWED_HOSTS = ["127.0.0.1", BE_HOSTNAME, FE_HOSTNAME]
 CORS_ALLOW_HEADERS = (
     *default_headers,
     "x-email-verification-key",
     "x-password-reset-key",
 )
-# Note: CORS_ALLOW_CREDENTIALS not needed for JWT (tokens in Authorization header)
-CORS_ALLOWED_ORIGINS = ["http://localhost:5173", "https://soup.feofanov.dev"]
-CSRF_TRUSTED_ORIGINS = [
-    "https://soup.feofanov.dev",
-    "https://soup-api.feofanov.dev",
-    "http://localhost:5173",
-    "http://localhost:8000",
-]
 
 # Application definition
 
