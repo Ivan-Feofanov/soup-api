@@ -4,12 +4,12 @@ from factory.django import DjangoModelFactory
 from kitchen.models import (
     Appliance,
     ApplianceType,
-    Manufacturer,
-    Unit,
     Ingredient,
     Instruction,
+    Manufacturer,
     Recipe,
     RecipeIngredient,
+    Unit,
 )
 from users.tests.factories import CustomUserFactory
 
@@ -90,3 +90,16 @@ class RecipeFactory(DjangoModelFactory):
     slug = factory.Faker("slug")
     instructions = factory.RelatedFactoryList(InstructionFactory, "recipe", size=3)
     ingredients = factory.RelatedFactoryList(RecipeIngredientFactory, "recipe", size=3)
+
+    @factory.post_generation
+    def appliances(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            # If a list of appliances is passed: RecipeFactory(appliances=[a1, a2])
+            for appliance in extracted:
+                self.appliances.add(appliance)
+        else:
+            for _ in range(3):
+                self.appliances.add(ApplianceFactory())

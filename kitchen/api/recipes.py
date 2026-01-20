@@ -1,43 +1,48 @@
 import uuid
 
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.db.transaction import atomic
 from django.shortcuts import get_object_or_404
 from ninja_extra import (
-    api_controller,
     ControllerBase,
-    http_get,
-    http_post,
-    http_patch,
-    status,
+    api_controller,
     http_delete,
+    http_get,
+    http_patch,
+    http_post,
+    status,
 )
 from ninja_extra.exceptions import PermissionDenied
 from ninja_jwt.authentication import JWTAuth
 
-from kitchen.api.schemes import RecipeShortSchema, RecipeSchema, RecipeCreateSchema
+from kitchen.api.schemes import RecipeCreateSchema, RecipeSchema, RecipeShortSchema
+from kitchen.models import Appliance, Instruction, Recipe, RecipeIngredient
 from users.authentication import OptionalJWTAuth
-from kitchen.models import Recipe, RecipeIngredient, Instruction
 
 
 @api_controller("/kitchen/recipes", tags=["Recipes"])
 class RecipesController(ControllerBase):
     @staticmethod
     def get_queryset(request):
-        qs = (
-            Recipe.objects.select_related("author")
-            .prefetch_related(
-                "instructions",
-                "recipeingredient_set__ingredient",
-                "recipeingredient_set__unit",
-            )
-            .filter(is_draft=False)
-        )
+        qs = Recipe.objects.select_related("author").filter(is_draft=False)
         if request.user.is_authenticated:
             qs = qs.filter(Q(author=request.user) | Q(visibility="PUBLIC"))
         else:
             qs = qs.filter(visibility="PUBLIC")
         return qs.order_by("-updated_at")
+
+    def get_recipe_queryset(self, request):
+        return self.get_queryset(request).prefetch_related(
+            "instructions",
+            Prefetch(
+                "appliances",
+                queryset=Appliance.objects.select_related("manufacturer", "type"),
+            ),
+            Prefetch(
+                "recipeingredient_set",
+                queryset=RecipeIngredient.objects.select_related("ingredient", "unit"),
+            ),
+        )
 
     @http_get(
         "/",
@@ -49,11 +54,11 @@ class RecipesController(ControllerBase):
 
     @http_get("/{uuid:uid}", response=RecipeSchema, auth=OptionalJWTAuth())
     def get_recipe(self, request, uid: uuid.UUID):
-        return get_object_or_404(self.get_queryset(request), uid=uid)
+        return get_object_or_404(self.get_recipe_queryset(request=request), uid=uid)
 
     @http_get("/{slug:slug}", response=RecipeSchema, auth=OptionalJWTAuth())
     def get_recipe_by_slug(self, request, slug: str):
-        return get_object_or_404(self.get_queryset(request), slug=slug)
+        return get_object_or_404(self.get_recipe_queryset(request=request), slug=slug)
 
     @http_post(
         "/",
@@ -93,6 +98,12 @@ class RecipesController(ControllerBase):
                     unit_id=ingredient.unit_uid,
                     quantity=ingredient.quantity,
                 )
+
+            if payload.appliance_uids:
+                recipe.appliances.set(
+                    Appliance.objects.filter(uid__in=payload.appliance_uids)
+                )
+
             recipe.refresh_from_db()
             return status.HTTP_201_CREATED, recipe
 
@@ -105,9 +116,7 @@ class RecipesController(ControllerBase):
         recipe = get_object_or_404(Recipe, uid=uid)
         if recipe.author != request.user:
             raise PermissionDenied()
-        recipe_payload = payload.model_dump()
-        del recipe_payload["ingredients"]
-        del recipe_payload["instructions"]
+
         if payload.instructions:
             instructions_for_create = []
             recipe.instructions.all().delete()
@@ -135,6 +144,16 @@ class RecipesController(ControllerBase):
                     )
                 )
             RecipeIngredient.objects.bulk_create(ingredients_for_create)
+
+        if payload.appliance_uids is not None:
+            recipe.appliances.set(
+                Appliance.objects.filter(uid__in=payload.appliance_uids)
+            )
+
+        recipe_payload = payload.model_dump(exclude_unset=True)
+        for field in ["ingredients", "instructions", "appliance_uids"]:
+            if field in recipe_payload:
+                del recipe_payload[field]
 
         for field, value in recipe_payload.items():
             if value is not None:

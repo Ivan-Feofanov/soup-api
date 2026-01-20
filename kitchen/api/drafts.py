@@ -1,20 +1,21 @@
 import uuid
 
+from django.db.models import Prefetch
 from django.db.transaction import atomic
 from django.shortcuts import get_object_or_404
 from ninja_extra import (
-    api_controller,
     ControllerBase,
+    api_controller,
+    http_delete,
     http_get,
+    http_patch,
     http_post,
     status,
-    http_patch,
-    http_delete,
 )
 from ninja_jwt.authentication import JWTAuth
 
-from kitchen.api.schemes import RecipeSchema, DraftSchema
-from kitchen.models import Recipe, RecipeIngredient, Instruction
+from kitchen.api.schemes import DraftSchema, RecipeSchema
+from kitchen.models import Appliance, Instruction, Recipe, RecipeIngredient
 from users.api.users import ValidationException
 from users.authentication import OptionalJWTAuth
 
@@ -29,6 +30,10 @@ class RecipeDraftsController(ControllerBase):
             Recipe.objects.select_related("author")
             .prefetch_related(
                 "instructions",
+                Prefetch(
+                    "appliances",
+                    queryset=Appliance.objects.select_related("manufacturer", "type"),
+                ),
                 "recipeingredient_set__ingredient",
                 "recipeingredient_set__unit",
             )
@@ -67,9 +72,9 @@ class RecipeDraftsController(ControllerBase):
     def update_draft(self, request, uid: uuid.UUID, payload: DraftSchema):
         with atomic():
             recipe = get_object_or_404(self.get_queryset(request), uid=uid)
-            recipe_payload = payload.model_dump()
-            del recipe_payload["ingredients"]
-            if payload.ingredients:
+            recipe_payload = payload.model_dump(exclude_unset=True)
+
+            if payload.ingredients is not None:
                 recipe.recipeingredient_set.all().delete()
                 for ingredient in payload.ingredients:
                     RecipeIngredient.objects.create(
@@ -78,8 +83,8 @@ class RecipeDraftsController(ControllerBase):
                         unit_id=ingredient.unit_uid,
                         quantity=ingredient.quantity,
                     )
-            del recipe_payload["instructions"]
-            if payload.instructions:
+
+            if payload.instructions is not None:
                 recipe.instructions.all().delete()
                 for instruction in payload.instructions:
                     if instruction.description.strip():
@@ -89,6 +94,16 @@ class RecipeDraftsController(ControllerBase):
                             description=instruction.description,
                             timer=instruction.timer,
                         )
+
+            if payload.appliance_uids is not None:
+                recipe.appliances.set(
+                    Appliance.objects.filter(uid__in=payload.appliance_uids)
+                )
+
+            for field in ["ingredients", "instructions", "appliance_uids"]:
+                if field in recipe_payload:
+                    del recipe_payload[field]
+
             for field, value in recipe_payload.items():
                 if value is not None:
                     setattr(recipe, field, value)

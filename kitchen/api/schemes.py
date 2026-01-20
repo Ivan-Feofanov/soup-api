@@ -4,8 +4,14 @@ from ninja import ModelSchema, Schema
 
 from kitchen.api.ingredients import IngredientSchema
 from kitchen.api.units import UnitSchema
-
-from kitchen.models import Instruction, RecipeIngredient, Recipe
+from kitchen.models import (
+    Appliance,
+    ApplianceType,
+    Instruction,
+    Manufacturer,
+    Recipe,
+    RecipeIngredient,
+)
 from shared.schemes import UIDSchema
 from users.models import CustomUser
 
@@ -20,6 +26,27 @@ class InstructionCreateSchema(ModelSchema):
     class Meta:
         model = Instruction
         fields = ["step", "description", "timer"]
+
+
+class ApplianceTypeSchema(UIDSchema, ModelSchema):
+    class Meta:
+        model = ApplianceType
+        fields = ["name"]
+
+
+class ManufacturerSchema(UIDSchema, ModelSchema):
+    class Meta:
+        model = Manufacturer
+        fields = ["name"]
+
+
+class ApplianceSchema(UIDSchema, ModelSchema):
+    class Meta:
+        model = Appliance
+        fields = ["model"]
+
+    manufacturer: ManufacturerSchema
+    type: ApplianceTypeSchema
 
 
 class IngredientInRecipeCreateSchema(Schema):
@@ -77,6 +104,7 @@ class RecipeSchema(UIDSchema, ModelSchema):
 
     ingredients: list[IngredientInRecipeSchema] = []
     instructions: list[InstructionSchema] = []
+    appliances: list[ApplianceSchema] = []
     author: AuthorSchema | None = None
 
     @staticmethod
@@ -91,6 +119,7 @@ class RecipeCreateSchema(Schema):
     notes: str | None = None
     instructions: list[InstructionCreateSchema]
     ingredients: list[IngredientInRecipeCreateSchema]
+    appliance_uids: list[uuid.UUID] | None = None
     visibility: Recipe.Visibility = Recipe.Visibility.PRIVATE
 
 
@@ -102,4 +131,5 @@ class DraftSchema(Schema):
     notes: str | None = None
     instructions: list[InstructionCreateSchema] | None = None
     ingredients: list[IngredientInRecipeCreateSchema] | None = None
+    appliance_uids: list[uuid.UUID] | None = None
     visibility: Recipe.Visibility = Recipe.Visibility.PRIVATE

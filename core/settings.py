@@ -208,3 +208,21 @@ NINJA_JWT = {
 }
 
 OPENAPI_GENERATOR_TOKEN = os.environ.get("OPENAPI_GENERATOR_TOKEN", None)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "DEBUG",
+        },
+    },
+    "loggers": {
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,  # Set to False to prevent duplicate logging
+        },
+    },
+}

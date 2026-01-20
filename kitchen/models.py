@@ -63,6 +63,7 @@ class Recipe(Common):
 
     ingredients = models.ManyToManyField(Ingredient, through="RecipeIngredient")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    appliances = models.ManyToManyField("Appliance")
 
     def save(self, *args, **kwargs):
         if not self.slug and self.title:
@@ -108,4 +109,4 @@ class Appliance(Common):
     type = models.ForeignKey(ApplianceType, on_delete=models.CASCADE)
 
     def __str__(self):
-        return self.model
+        return f"{self.manufacturer} {self.model} ({self.type})"
